@@ -7,7 +7,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
-*
+* Fix `prettyJson = true` option
 
 ### Features
 
