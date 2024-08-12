@@ -99,7 +99,6 @@ class SolidityCompile extends SourceTask {
 
             if (prettyJson) {
                 options.add('--pretty-json')
-                options.add(options.add("--$OutputComponent.ASM_JSON"))
             }
 
             if (ignoreMissing) {
