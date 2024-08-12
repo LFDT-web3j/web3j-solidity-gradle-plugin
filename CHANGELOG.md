@@ -7,7 +7,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
-* Fix `prettyJson = true` option
+* Fix `prettyJson = true` option [#75](https://github.com/hyperledger/web3j-solidity-gradle-plugin/pull/75)
 
 ### Features
 
