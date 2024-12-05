@@ -12,6 +12,7 @@
  */
 package org.web3j.solidity.gradle.plugin
 
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.tasks.*
 import org.web3j.sokt.SolcInstance
 import org.web3j.sokt.SolidityFile
@@ -20,7 +21,7 @@ import org.web3j.sokt.VersionResolver
 import java.nio.file.Paths
 
 @CacheableTask
-class SolidityCompile extends SourceTask {
+abstract class SolidityCompile extends SourceTask {
 
     @Input
     @Optional
@@ -70,8 +71,26 @@ class SolidityCompile extends SourceTask {
     @Optional
     private CombinedOutputComponent[] combinedOutputComponents
 
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getResolvedImports()
+
+    SolidityCompile() {
+        resolvedImports.convention(project.provider {
+            // Optional file input workaround: https://github.com/gradle/gradle/issues/2016
+            // This is a provider that is only triggered when not overwritten (solidity.resolvePackages = false).
+            def emptyImportsFile = project.layout.buildDirectory.file("sol-imports-empty.txt").get()
+            emptyImportsFile.asFile.parentFile.mkdirs()
+            emptyImportsFile.asFile.createNewFile()
+            return emptyImportsFile
+        })
+    }
+
     @TaskAction
     void compileSolidity() {
+        final imports = resolvedImports.get().asFile.readLines().findAll { !it.isEmpty() }
+        final File nodeModulesDir = project.node.nodeProjectDir.dir("node_modules").get().asFile
+
         for (def contract in source) {
             def options = []
 
@@ -105,18 +124,17 @@ class SolidityCompile extends SourceTask {
                 options.add('--ignore-missing')
             }
 
-            if (!allowPaths.isEmpty()) {
+            if (!allowPaths.isEmpty() || !imports.isEmpty()) {
                 options.add("--allow-paths")
-                options.add(allowPaths.join(','))
+                options.add((allowPaths + imports.collect { new File(nodeModulesDir,it).absolutePath }).join(','))
             }
 
-            final File nodeProjectDir = project.node.nodeProjectDir.asFile.get()
-            def allPathRemappings = pathRemappings + ImportsResolver.instance.resolveImports(contract, nodeProjectDir)
+            pathRemappings.each { key, value ->
+                options.add("$key=$value")
+            }
 
-            if (!allPathRemappings.isEmpty()) {
-                allPathRemappings.forEach { key, value ->
-                    options.add("$key=$value")
-                }
+            imports.each { provider ->
+                options.add("$provider=$nodeModulesDir/$provider")
             }
 
             options.add('--output-dir')

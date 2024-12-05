@@ -12,21 +12,31 @@
  */
 package org.web3j.solidity.gradle.plugin
 
-import groovy.transform.Memoized
+import groovy.io.FileType
+
+import java.util.regex.Pattern
 
 /**
  * Helper class to resolve the external imports from a Solidity file.
  *
- * Supported providers are:
+ * The import resolving is done in three steps:
  * <ul>
- *     <li><a href="https://www.npmjs.com/package/@openzeppelin/contracts">Open Zeppelin</a></li>
- *     <li><a href="https://www.npmjs.com/package/@uniswap/lib">Uniswap</a></li>
+ *     <li>
+ *         First, all packages needed for direct imports are extracted from sol files to generate a package.json.
+ *         This is done in a separate Gradle task, so that the next steps are only performed when direct imports change.
+ *     </li>
+ *     <li>
+ *         Second, required packages are downloaded by npm.
+ *     </li>
+ *     <li>
+ *         Third, sol files that were downloaded are analyzed as well and all packages required are collected.
+ *         This information is used in compileSolidity for the allowed paths and the path remappings.
+ *     </li>
  * </ul>
  */
-@Singleton
 class ImportsResolver {
 
-    private Set<String> PROVIDERS = ["@openzeppelin/contracts", "@uniswap/lib"]
+    private static final IMPORT_PROVIDER_PATTERN = Pattern.compile(".*import.*['\"](@[^/]+/[^/]+).*");
 
     /**
      * Looks for external imports in Solidity files, eg:
@@ -41,17 +51,44 @@ class ImportsResolver {
      * @param nodeProjectDir the Node.js project directory
      * @return
      */
-    @Memoized
-    Map<String, String> resolveImports(final File solFile, final File nodeProjectDir) {
-        final Map<String, String> imports = [:]
-        PROVIDERS.forEach { String provider ->
-            def importFound = !solFile.readLines().findAll {
-                it.contains(provider)
-            }.isEmpty()
+    static Set<String> extractImports(final File solFile) {
+        final Set<String> imports = new TreeSet<>()
+
+        solFile.readLines().each { String line ->
+            final importProviderMatcher = IMPORT_PROVIDER_PATTERN.matcher(line)
+            final importFound = importProviderMatcher.matches()
             if (importFound) {
-                imports.put(provider, "$nodeProjectDir.path/node_modules/$provider")
+                final provider = importProviderMatcher.group(1)
+                imports.add(provider)
             }
         }
+
         return imports
+    }
+
+    static Set<String> resolveTransitive(Set<String> directImports, File nodeModulesDir) {
+        final Set<String> allImports = new TreeSet<>()
+        if (directImports.isEmpty()) {
+            return allImports
+        }
+
+        def transitiveResolved = 0
+        allImports.addAll(directImports)
+
+        while (transitiveResolved != allImports.size()) {
+            transitiveResolved = allImports.size()
+            allImports.collect().each { nodeModule ->
+                final packageFolder = new File(nodeModulesDir, nodeModule)
+                if (packageFolder.exists()) { // this may be a dev dependency from a test that we do not need
+                    packageFolder.eachFileRecurse(FileType.FILES) { dependencyFile ->
+                        if (dependencyFile.name.endsWith('.sol')) {
+                            allImports.addAll(extractImports(dependencyFile))
+                        }
+                    }
+                }
+            }
+        }
+
+        return allImports
     }
 }

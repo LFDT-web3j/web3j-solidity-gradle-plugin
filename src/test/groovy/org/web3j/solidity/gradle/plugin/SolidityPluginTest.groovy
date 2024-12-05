@@ -138,6 +138,8 @@ class SolidityPluginTest {
         assertTrue(Files.exists(compiledSolDir.resolve("MyCollectible.abi")))
         assertTrue(Files.exists(compiledSolDir.resolve("MyCollectible.bin")))
         assertTrue(Files.exists(compiledSolDir.resolve("ERC721.abi")))
+        assertTrue(Files.exists(compiledSolDir.resolve("MyOFT.abi")))
+        assertTrue(Files.exists(compiledSolDir.resolve("MyOFT.bin")))
 
         def upToDate = build()
         assertEquals(UP_TO_DATE, upToDate.task(":compileSolidity").getOutcome())
