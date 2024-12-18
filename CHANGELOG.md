@@ -11,7 +11,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-*
+* allow Solidity imports from arbitrary npm packages [#78](https://github.com/hyperledger-web3j/web3j-solidity-gradle-plugin/pull/78)
 
 ### BREAKING CHANGES
 

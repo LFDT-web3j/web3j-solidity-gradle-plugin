@@ -12,80 +12,41 @@
  */
 package org.web3j.solidity.gradle.plugin
 
-import groovy.json.JsonBuilder
-import groovy.json.JsonOutput
+import com.github.gradle.node.npm.task.NpmSetupTask
+import com.github.gradle.node.npm.task.NpmTask
+import groovy.json.JsonSlurper
+import groovy.transform.CompileStatic
 import org.gradle.api.DefaultTask
-import org.gradle.api.file.FileTree
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.internal.file.FileOperations
+import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 
+import javax.inject.Inject
+
+@CompileStatic
 @CacheableTask
-class SolidityResolve extends DefaultTask {
+abstract class SolidityResolve extends DefaultTask {
 
-    private FileTree sources
+    @InputFile
+    @PathSensitive(value = PathSensitivity.NAME_ONLY)
+    abstract RegularFileProperty getPackageJson()
 
-    private Set<String> allowPaths
+    @InputDirectory
+    @PathSensitive(value = PathSensitivity.RELATIVE)
+    abstract DirectoryProperty getNodeModules()
 
-    private File packageJson
+    @OutputFile
+    abstract RegularFileProperty getAllImports()
 
     @TaskAction
     void resolveSolidity() {
-        final Set<String> libraries = []
-        final File nodeProjectDir = project.node.nodeProjectDir.asFile.get()
+        final imports = new JsonSlurper().parse(getPackageJson().get().asFile)['dependencies'] as Map<String, String>
 
-        for (def contract in sources) {
-            def imports = ImportsResolver.instance.resolveImports(contract, nodeProjectDir)
-            for (provider in imports.keySet()) {
-                libraries.add(provider)
-                allowPaths.add("$nodeProjectDir.path/node_modules/$provider")
-            }
-        }
+        final all = ImportsResolver.resolveTransitive(imports.keySet(), getNodeModules().get().asFile)
 
-        def jsonMap = [
-                "name"        : project.name,
-                "description" : project.description == null ? " " : project.description,
-                "repository"  : " ",
-                "license"     : "UNLICENSED",
-                "dependencies": libraries.collectEntries {
-                    [(it): "latest"]
-                }
-        ]
-
-        if (!packageJson.exists()) {
-            packageJson.parentFile.mkdirs()
-            packageJson.createNewFile()
-            def jsonBuilder = new JsonBuilder()
-            jsonBuilder jsonMap
-            packageJson.append(JsonOutput.prettyPrint(jsonBuilder.toString()) + "\n")
-        }
+        allImports.get().asFile.text = all.join('\n')
     }
 
-    @InputFiles
-    @PathSensitive(value = PathSensitivity.RELATIVE)
-    @SkipWhenEmpty
-    FileTree getSources() {
-        return sources
-    }
-
-    void setSources(FileTree sources) {
-        this.sources = sources
-    }
-
-    @OutputFile
-    File getPackageJson() {
-        return packageJson
-    }
-
-    void setPackageJson(File packageJson) {
-        this.packageJson = packageJson
-    }
-
-    @Input
-    @Optional
-    Set<String> getAllowPaths() {
-        return allowPaths
-    }
-
-    void setAllowPaths(Set<String> allowPaths) {
-        this.allowPaths = allowPaths
-    }
 }
