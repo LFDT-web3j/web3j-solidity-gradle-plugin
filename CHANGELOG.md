@@ -3,7 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [0.5.2]() (Upcoming)
+# [0.5.3]() (Upcoming)
+
+### Bug Fixes
+
+*
+
+### Features
+
+*
+
+### BREAKING CHANGES
+
+*
+
+# [0.5.2](https://github.com/hyperledger-web3j/web3j-solidity-gradle-plugin/releases/tag/v0.5.2) (2024-12-18)
 
 ### Bug Fixes
 
