@@ -3,7 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [0.6.0]() (Upcoming)
+# [0.6.1]() (Upcoming)
+
+### Bug Fixes
+
+*
+
+### Features
+
+*
+
+### BREAKING CHANGES
+
+*
+
+# [0.6.0](https://github.com/LFDT-web3j/web3j-solidity-gradle-plugin/releases/tag/v0.6.0) (2025-04-09)
 
 ### Bug Fixes
 
