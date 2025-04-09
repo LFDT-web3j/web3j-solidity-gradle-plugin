@@ -6,6 +6,10 @@ task downloadJavaLicense(type: Download) {
     src 'https://raw.githubusercontent.com/LFDT-web3j/web3j-build-tools/main/gradle/spotless/java.license'
     dest new File("$rootDir/gradle/spotless",'java.license')
     quiet true
+    //Download only if the file does not already exist
+    onlyIf {
+        !dest.exists()
+    }
     onlyIfModified true
 }
 
@@ -13,6 +17,9 @@ task downloadFormatterProperties(type: Download) {
     src 'https://raw.githubusercontent.com/LFDT-web3j/web3j-build-tools/main/gradle/spotless/formatter.properties'
     dest new File("$rootDir/gradle/spotless",'formatter.properties')
     quiet true
+    onlyIf {
+        !dest.exists()
+    }
     onlyIfModified true
 }
 
