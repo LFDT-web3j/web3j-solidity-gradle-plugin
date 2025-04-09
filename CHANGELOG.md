@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [0.5.3]() (Upcoming)
+# [0.6.0]() (Upcoming)
 
 ### Bug Fixes
 
@@ -15,7 +15,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### BREAKING CHANGES
 
-*
+* Upgrade to java 21 and web3j-sockt 0.5.0 [#81](https://github.com/hyperledger-web3j/web3j-solidity-gradle-plugin/pull/81)
 
 # [0.5.2](https://github.com/hyperledger-web3j/web3j-solidity-gradle-plugin/releases/tag/v0.5.2) (2024-12-18)
 
