@@ -74,3 +74,19 @@ spotless {
         licenseHeaderFile "$rootDir/gradle/spotless/java.license"
     }
 }
+
+// Test against older supported Gradle versions.
+// Test against latest 8.x release (8.5 is absolute minimum due to Java 21 requirement)
+['8.14.3'].forEach { gradleVersionUnderTest ->
+    def testGradle = tasks.register("testGradle$gradleVersionUnderTest", Test) {
+        group = "verification"
+        description = "Runs tests against Gradle $gradleVersionUnderTest"
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath
+        useJUnitPlatform()
+        systemProperty("gradleVersionUnderTest", gradleVersionUnderTest)
+    }
+    tasks.named('check') {
+        dependsOn(testGradle)
+    }
+}

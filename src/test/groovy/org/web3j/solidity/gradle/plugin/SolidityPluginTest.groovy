@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals
 import static org.junit.jupiter.api.Assertions.assertTrue
 
 class SolidityPluginTest {
+    final static String gradleVersionUnderTest = System.getProperty("gradleVersionUnderTest")
 
     /**
      * Gradle project directory where the test project will be run.
@@ -354,9 +355,10 @@ class SolidityPluginTest {
     private BuildResult build() {
         return GradleRunner.create()
                 .withProjectDir(testProjectDir.toFile())
-                .withArguments("build", "--info", "--configuration-cache")
+                .withArguments("build", "--info", "-s", "--configuration-cache")
                 .withPluginClasspath()
-                .forwardOutput()
-                .build()
+                .forwardOutput().with {
+                    gradleVersionUnderTest? it.withGradleVersion(gradleVersionUnderTest) : it
+                }.build()
     }
 }
