@@ -92,7 +92,6 @@ class SolidityPluginTest {
                         exclude "$differentVersionsFolderName/**"
                     }
                 }
-            tasks.named("jar").configure { dependsOn("compileSolidity") }
             }
         """)
 
@@ -129,7 +128,6 @@ class SolidityPluginTest {
                     }
                 }
             }
-            tasks.named("jar").configure { dependsOn("compileSolidity") }
         """)
 
         def success = build()
@@ -167,7 +165,6 @@ class SolidityPluginTest {
                        exclude "$differentVersionsFolderName/**"
                    }
                }
-            tasks.named("jar").configure { dependsOn("compileSolidity") }
             }
         """)
 
@@ -202,7 +199,6 @@ class SolidityPluginTest {
                        exclude "$differentVersionsFolderName/**"
                    }
                }
-            tasks.named("jar").configure { dependsOn("compileSolidity") }
             }
         """)
 
@@ -241,7 +237,6 @@ class SolidityPluginTest {
                    }
                }
             }
-            tasks.named("jar").configure { dependsOn("compileSolidity") }
         """)
 
         def success = build()
@@ -344,8 +339,6 @@ class SolidityPluginTest {
                     }
                 }
             }
-    
-            tasks.named("jar").configure { dependsOn("compileSolidity") }
         """)
 
         def success = build()
