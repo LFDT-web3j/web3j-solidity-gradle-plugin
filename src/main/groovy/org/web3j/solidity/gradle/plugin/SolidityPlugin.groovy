@@ -18,9 +18,9 @@ import com.github.gradle.node.npm.task.NpmInstallTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.SourceDirectorySet
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.plugins.JavaPlugin
-import org.gradle.api.plugins.JavaPluginConvention
 import org.gradle.api.tasks.SourceSet
 import org.gradle.api.tasks.SourceSetContainer
 
@@ -35,23 +35,21 @@ import static org.web3j.solidity.gradle.plugin.SoliditySourceSet.NAME
 class SolidityPlugin implements Plugin<Project> {
 
     private final ObjectFactory objectFactory
-    private final SoliditySourceSet resolvedSolidity
+    private final SourceDirectorySet resolvedSolidity
 
     @Inject
     SolidityPlugin(final ObjectFactory objectFactory) {
         this.objectFactory = objectFactory
-        this.resolvedSolidity = new DefaultSoliditySourceSet("All", objectFactory)
+        this.resolvedSolidity = objectFactory.sourceDirectorySet(NAME, "Solidity Sources")
     }
 
     @Override
     void apply(final Project target) {
         target.pluginManager.apply(JavaPlugin.class)
         target.pluginManager.apply(NodePlugin.class)
-        target.extensions.create(SolidityExtension.NAME,
-                SolidityExtension, target)
+        target.extensions.create(SolidityExtension.NAME, SolidityExtension, target)
 
-        final SourceSetContainer sourceSets = target.convention
-                .getPlugin(JavaPluginConvention.class).sourceSets
+        final SourceSetContainer sourceSets = target.extensions.getByType(SourceSetContainer.class)
 
         sourceSets.all { SourceSet sourceSet ->
             configureSourceSet(target, sourceSet)
@@ -66,7 +64,7 @@ class SolidityPlugin implements Plugin<Project> {
                 configureSolidityCompile(target, sourceSet)
                 configureAllowPath(target, sourceSet)
                 sourceSet.allSource.srcDirs.forEach {
-                    resolvedSolidity.solidity.srcDir(it)
+                    resolvedSolidity.srcDir(it)
                 }
             }
             configureSolidityResolve(target, nodeExtension.nodeProjectDir)
@@ -79,18 +77,19 @@ class SolidityPlugin implements Plugin<Project> {
     private void configureSourceSet(final Project project, final SourceSet sourceSet) {
 
         def srcSetName = capitalize((CharSequence) sourceSet.name)
-        def soliditySourceSet = new DefaultSoliditySourceSet(srcSetName, objectFactory)
+        def soliditySourceSet = objectFactory.newInstance(DefaultSoliditySourceSet,
+                objectFactory.sourceDirectorySet(NAME, srcSetName + " Solidity Sources"))
 
-        sourceSet.convention.plugins.put(NAME, soliditySourceSet)
+        sourceSet.extensions.add(NAME, soliditySourceSet)
 
         def defaultSrcDir = new File(project.projectDir, "src/$sourceSet.name/$NAME")
-        def defaultOutputDir = new File(project.buildDir, "resources/$sourceSet.name/$NAME")
+        def defaultOutputDir = project.layout.buildDirectory.dir("resources/$sourceSet.name/$NAME")
 
-        soliditySourceSet.solidity.srcDir(defaultSrcDir)
-        soliditySourceSet.solidity.destinationDirectory = defaultOutputDir
+        soliditySourceSet.srcDir(defaultSrcDir)
+        soliditySourceSet.destinationDirectory.set(defaultOutputDir)
 
-        sourceSet.allJava.source(soliditySourceSet.solidity)
-        sourceSet.allSource.source(soliditySourceSet.solidity)
+        sourceSet.allJava.source(soliditySourceSet)
+        sourceSet.allSource.source(soliditySourceSet)
     }
 
     /**
@@ -104,7 +103,7 @@ class SolidityPlugin implements Plugin<Project> {
     private static void configureSolidityCompile(final Project project, final SourceSet sourceSet) {
 
         def compileTask = project.tasks.create(sourceSet.getTaskName("compile", "Solidity"), SolidityCompile)
-        def soliditySourceSet = sourceSet.convention.plugins[NAME] as SoliditySourceSet
+        def soliditySourceSet = sourceSet.extensions.getByType(SoliditySourceSet)
 
         if (!requiresBundledExecutable(project)) {
             // Leave executable as specified by the user
@@ -116,7 +115,7 @@ class SolidityPlugin implements Plugin<Project> {
         } else {
             compileTask.version = project.solidity.version
         }
-        compileTask.source = soliditySourceSet.solidity
+        compileTask.source = soliditySourceSet
         compileTask.outputComponents = project.solidity.outputComponents
         compileTask.combinedOutputComponents = project.solidity.combinedOutputComponents
         compileTask.overwrite = project.solidity.overwrite
@@ -143,7 +142,7 @@ class SolidityPlugin implements Plugin<Project> {
         } else {
             compileTask.ignoreMissing = project.solidity.ignoreMissing
         }
-        compileTask.outputs.dir(soliditySourceSet.solidity.destinationDirectory)
+        compileTask.outputs.dir(soliditySourceSet.destinationDirectory)
         compileTask.description = "Compiles $sourceSet.name Solidity source."
 
         project.getTasks().named('build').configure {
@@ -156,7 +155,7 @@ class SolidityPlugin implements Plugin<Project> {
         if (target.solidity.resolvePackages) {
             def extractSolidityImports = target.tasks.register("extractSolidityImports", SolidityExtractImports) {
                 it.description = "Extracts imports of external Solidity contract modules."
-                it.sources.from(resolvedSolidity.solidity)
+                it.sources.from(resolvedSolidity)
                 it.packageJson.set(nodeProjectDir.file("package.json"))
             }
             def npmInstall = target.tasks.named(NpmInstallTask.NAME) {

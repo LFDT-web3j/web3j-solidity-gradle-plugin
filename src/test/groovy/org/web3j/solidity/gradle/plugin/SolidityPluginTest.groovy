@@ -232,14 +232,15 @@ class SolidityPluginTest {
                        exclude "common/**"
                        exclude "openzeppelin/**"
                        exclude "$differentVersionsFolderName/**"
+
+                       setEvmVersion('ISTANBUL')
+                       setOptimize(true)
+                       setOptimizeRuns(200)
+                       setVersion('0.8.12')
                    }
-               setEvmVersion('ISTANBUL')
-               setOptimize(true)
-               setOptimizeRuns(200)
-               setVersion('0.8.12')
                }
-            tasks.named("jar").configure { dependsOn("compileSolidity") }
             }
+            tasks.named("jar").configure { dependsOn("compileSolidity") }
         """)
 
         def success = build()

@@ -13,20 +13,21 @@
 package org.web3j.solidity.gradle.plugin
 
 import groovy.transform.CompileStatic
-import org.gradle.api.Action
 import org.gradle.api.file.SourceDirectorySet
+import org.gradle.api.internal.file.DefaultSourceDirectorySet
+import org.gradle.api.internal.tasks.TaskDependencyFactory
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.reflect.HasPublicType
 import org.gradle.api.reflect.TypeOf
-import org.gradle.util.ConfigureUtil
+
+import javax.inject.Inject
 
 /**
  * SoliditySourceSet default implementation.
  */
 @CompileStatic
-class DefaultSoliditySourceSet implements SoliditySourceSet, HasPublicType {
+class DefaultSoliditySourceSet extends DefaultSourceDirectorySet implements SoliditySourceSet, HasPublicType {
 
-    private final SourceDirectorySet solidity
     private final SourceDirectorySet allSolidity
     private EVMVersion evmVersion
     private String version
@@ -34,33 +35,16 @@ class DefaultSoliditySourceSet implements SoliditySourceSet, HasPublicType {
     private Integer optimizeRuns
     private Boolean ignoreMissing
 
+    @Inject
     DefaultSoliditySourceSet(
-            final String displayName,
-            final ObjectFactory objectFactory) {
-
-        final String sourceDirectoryDisplayName = displayName + " Solidity Sources"
-        solidity = objectFactory.sourceDirectorySet(NAME, sourceDirectoryDisplayName)
-        solidity.getFilter().include("**/*.sol")
-        allSolidity = objectFactory.sourceDirectorySet(sourceDirectoryDisplayName, sourceDirectoryDisplayName)
+            final SourceDirectorySet sourceDirectorySet,
+            final ObjectFactory objectFactory,
+            final TaskDependencyFactory taskDependencyFactory) {
+        super(sourceDirectorySet, taskDependencyFactory);
+        getFilter().include("**/*.sol")
+        allSolidity = objectFactory.sourceDirectorySet("allSolidity", displayName)
         allSolidity.getFilter().include("**/*.sol")
-        allSolidity.source(solidity)
-    }
-
-    @Override
-    SourceDirectorySet getSolidity() {
-        return solidity
-    }
-
-    @Override
-    SoliditySourceSet solidity(final Closure configureClosure) {
-        ConfigureUtil.configure(configureClosure, getSolidity())
-        return this
-    }
-
-    @Override
-    SoliditySourceSet solidity(final Action<? super SourceDirectorySet> configureAction) {
-        configureAction.execute(getSolidity())
-        return this
+        allSolidity.source(this)
     }
 
     @Override
