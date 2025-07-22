@@ -23,6 +23,7 @@ import org.gradle.api.model.ObjectFactory
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.tasks.SourceSet
 import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.language.jvm.tasks.ProcessResources
 
 import javax.inject.Inject
 
@@ -61,7 +62,7 @@ class SolidityPlugin implements Plugin<Project> {
 
         target.afterEvaluate {
             sourceSets.all { SourceSet sourceSet ->
-                configureSolidityCompile(target, sourceSet)
+                configureSolidityCompile(target, sourceSet, nodeExtension.nodeProjectDir)
                 configureAllowPath(target, sourceSet)
                 sourceSet.allSource.srcDirs.forEach {
                     resolvedSolidity.srcDir(it)
@@ -83,7 +84,7 @@ class SolidityPlugin implements Plugin<Project> {
         sourceSet.extensions.add(NAME, soliditySourceSet)
 
         def defaultSrcDir = new File(project.projectDir, "src/$sourceSet.name/$NAME")
-        def defaultOutputDir = project.layout.buildDirectory.dir("resources/$sourceSet.name/$NAME")
+        def defaultOutputDir = project.layout.buildDirectory.dir("solidity/$sourceSet.name/$NAME")
 
         soliditySourceSet.srcDir(defaultSrcDir)
         soliditySourceSet.destinationDirectory.set(defaultOutputDir)
@@ -100,7 +101,7 @@ class SolidityPlugin implements Plugin<Project> {
      * is <code>compileSolidity</code> and for <code>test</code>
      * <code>compileTestSolidity</code>.
      */
-    private static void configureSolidityCompile(final Project project, final SourceSet sourceSet) {
+    private static void configureSolidityCompile(final Project project, final SourceSet sourceSet, final nodeProjectDir) {
 
         def compileTask = project.tasks.create(sourceSet.getTaskName("compile", "Solidity"), SolidityCompile)
         def soliditySourceSet = sourceSet.extensions.getByType(SoliditySourceSet)
@@ -142,11 +143,18 @@ class SolidityPlugin implements Plugin<Project> {
         } else {
             compileTask.ignoreMissing = project.solidity.ignoreMissing
         }
-        compileTask.outputs.dir(soliditySourceSet.destinationDirectory)
+        compileTask.destinationDirectory.set(soliditySourceSet.destinationDirectory)
+        compileTask.destinationSubDirectory.set("solidity")
         compileTask.description = "Compiles $sourceSet.name Solidity source."
 
         project.getTasks().named('build').configure {
             it.dependsOn(compileTask)
+        }
+
+        compileTask.nodeModulesDir.set(nodeProjectDir.dir("node_modules"))
+
+        project.tasks.named("processResources", ProcessResources) {
+            it.from(compileTask)
         }
     }
 

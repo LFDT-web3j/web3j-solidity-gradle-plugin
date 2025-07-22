@@ -12,15 +12,21 @@
  */
 package org.web3j.solidity.gradle.plugin
 
+import groovy.transform.CompileStatic
+import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
+import org.gradle.process.ExecOperations
 import org.web3j.sokt.SolcInstance
 import org.web3j.sokt.SolidityFile
 import org.web3j.sokt.VersionResolver
 
+import javax.inject.Inject
 import java.nio.file.Paths
 
 @CacheableTask
+@CompileStatic
 abstract class SolidityCompile extends SourceTask {
 
     @Input
@@ -75,6 +81,18 @@ abstract class SolidityCompile extends SourceTask {
     @PathSensitive(PathSensitivity.NONE)
     abstract RegularFileProperty getResolvedImports()
 
+    @Input
+    abstract Property<String> getDestinationSubDirectory();
+
+    @OutputDirectory
+    abstract DirectoryProperty getDestinationDirectory();
+
+    @Internal
+    abstract DirectoryProperty getNodeModulesDir()
+
+    @Inject
+    protected abstract ExecOperations getExec();
+
     SolidityCompile() {
         resolvedImports.convention(project.provider {
             // Optional file input workaround: https://github.com/gradle/gradle/issues/2016
@@ -89,13 +107,12 @@ abstract class SolidityCompile extends SourceTask {
     @TaskAction
     void compileSolidity() {
         final imports = resolvedImports.get().asFile.readLines().findAll { !it.isEmpty() }
-        final File nodeModulesDir = project.node.nodeProjectDir.dir("node_modules").get().asFile
 
         for (def contract in source) {
-            def options = []
+            List<String> options = []
 
             for (output in outputComponents) {
-                options.add("--$output")
+                options.add("--$output".toString())
             }
 
             if (combinedOutputComponents?.length > 0) {
@@ -108,7 +125,7 @@ abstract class SolidityCompile extends SourceTask {
 
                 if (0 < optimizeRuns) {
                     options.add('--optimize-runs')
-                    options.add(optimizeRuns)
+                    options.add(optimizeRuns.toString())
                 }
             }
 
@@ -126,23 +143,27 @@ abstract class SolidityCompile extends SourceTask {
 
             if (!allowPaths.isEmpty() || !imports.isEmpty()) {
                 options.add("--allow-paths")
-                options.add((allowPaths + imports.collect { new File(nodeModulesDir,it).absolutePath }).join(','))
+                options.add((allowPaths + imports.collect { new File(nodeModulesDir.get().asFile, it).absolutePath }).join(','))
             }
 
             pathRemappings.each { key, value ->
-                options.add("$key=$value")
+                options.add("$key=$value".toString())
             }
 
             imports.each { provider ->
-                options.add("$provider=$nodeModulesDir/$provider")
+                options.add("$provider=${nodeModulesDir.get().asFile}/$provider".toString())
             }
 
             options.add('--output-dir')
-            options.add(project.projectDir.relativePath(outputs.files.singleFile))
-            options.add(project.projectDir.relativePath(contract))
+            if (destinationSubDirectory.isPresent()) {
+                options.add(new File(destinationDirectory.get().asFile, destinationSubDirectory.get()).absolutePath)
+            } else {
+                options.add(destinationDirectory.get().asFile.absolutePath)
+            }
+            options.add(contract.absolutePath)
 
             def compilerVersion = version
-            def solidityFile = new SolidityFile(contract.getAbsolutePath())
+            def solidityFile = new SolidityFile(contract.absolutePath)
             String compilerExecutable = executable
             SolcInstance compilerInstance
 
@@ -173,19 +194,19 @@ abstract class SolidityCompile extends SourceTask {
             if (Paths.get(compilerExecutable).toFile().exists()) {
                 // if the executable string is a file which exists, it may be a direct reference
                 // to the solc executable with a space in the path (Windows)
-                project.exec {
-                    executable = compilerExecutable
-                    args = options
+                exec.exec {
+                    it.executable = compilerExecutable
+                    it.args = options
                 }
             } else {
                 // otherwise we assume it's a normal reference to solidity or docker, possibly with args
                 def executableParts = compilerExecutable.split(' ')
                 options.addAll(0, executableParts.drop(1))
-                project.exec {
+                exec.exec {
                     // Use first part as executable
-                    executable = executableParts[0]
+                    it.executable = executableParts[0]
                     // Use other parts and options as args
-                    args = options
+                    it.args = options
                 }
             }
 

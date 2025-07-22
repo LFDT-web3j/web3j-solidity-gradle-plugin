@@ -53,6 +53,7 @@ repositories {
 
 ext {
     soktVersion = '0.5.0'
+    kotlinxSerializationVersion = '1.6.3' // required to CompileStatic with sokt involved
     junitVersion = '5.9.3'
     assertjVersion = '3.25.3'
     systemRulesVersion = '1.19.0'
@@ -61,6 +62,7 @@ ext {
 
 dependencies {
     implementation "org.web3j:web3j-sokt:$soktVersion"
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:$kotlinxSerializationVersion"
     implementation "com.github.node-gradle:gradle-node-plugin:$nodePluginVersion"
     testImplementation "org.assertj:assertj-core:$assertjVersion"
     testImplementation "com.github.stefanbirkner:system-rules:$systemRulesVersion"

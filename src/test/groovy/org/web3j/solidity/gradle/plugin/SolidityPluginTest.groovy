@@ -354,10 +354,9 @@ class SolidityPluginTest {
     private BuildResult build() {
         return GradleRunner.create()
                 .withProjectDir(testProjectDir.toFile())
-                .withArguments("build", "--info")
+                .withArguments("build", "--info", "--configuration-cache")
                 .withPluginClasspath()
                 .forwardOutput()
-                .withDebug(true)
                 .build()
     }
 }
