@@ -69,7 +69,7 @@ class SolidityPlugin implements Plugin<Project> {
 
         sourceSet.extensions.add(NAME, soliditySourceSet)
 
-        def defaultSrcDir = new File(project.projectDir, "src/$sourceSet.name/$NAME")
+        def defaultSrcDir = project.layout.projectDirectory.dir("src/$sourceSet.name/$NAME")
         def defaultOutputDir = project.layout.buildDirectory.dir("solidity/$sourceSet.name/$NAME")
 
         soliditySourceSet.srcDir(defaultSrcDir)
