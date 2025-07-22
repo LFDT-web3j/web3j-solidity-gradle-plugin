@@ -14,6 +14,10 @@ package org.web3j.solidity.gradle.plugin
 
 import groovy.transform.CompileStatic
 import org.gradle.api.Project
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.MapProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.provider.SetProperty
 
 import javax.inject.Inject
 
@@ -21,165 +25,53 @@ import javax.inject.Inject
  * Extension for Solidity compilation options.
  */
 @CompileStatic
-class SolidityExtension {
-
+abstract class SolidityExtension {
     static final NAME = 'solidity'
 
-    private Project project
-
-    private String version
-
-    private String executable
-
-    private Boolean overwrite
-
-    private Boolean optimize
-
-    private Boolean resolvePackages
-
-    private Integer optimizeRuns
-
-    private Boolean prettyJson
-
-    private Boolean ignoreMissing
-
-    private List<String> allowPaths
-
-    private Map<String, String> pathRemappings
-
-    private EVMVersion evmVersion
-
-    private OutputComponent[] outputComponents
-
-    private CombinedOutputComponent[] combinedOutputComponents
-
     @Inject
-    SolidityExtension(final Project project) {
-        this.project = project
-        this.executable = null
-        this.optimize = true
-        this.resolvePackages = true
-        this.overwrite = true
-        this.optimizeRuns = 0
-        this.prettyJson = false
-        this.ignoreMissing = false
-        this.allowPaths = []
-        this.pathRemappings = [:]
-        this.evmVersion = null
-        this.outputComponents = [
+    SolidityExtension() {
+        optimize.convention(true)
+        resolvePackages.convention(true)
+        overwrite.convention(true)
+        optimizeRuns.convention(0)
+        prettyJson.convention(false)
+        ignoreMissing.convention(false)
+        outputComponents.convention([
                 OutputComponent.BIN,
                 OutputComponent.ABI,
                 OutputComponent.METADATA
-        ]
-        this.combinedOutputComponents = [
+        ])
+        combinedOutputComponents.convention([
                 CombinedOutputComponent.BIN,
                 CombinedOutputComponent.BIN_RUNTIME,
                 CombinedOutputComponent.SRCMAP,
                 CombinedOutputComponent.SRCMAP_RUNTIME
-        ]
+        ])
     }
 
-    String getVersion() {
-        return version
-    }
+    abstract Property<String> getVersion()
 
-    void setVersion(final String version) {
-        this.version = version
-    }
+    abstract Property<String> getExecutable()
 
-    String getExecutable() {
-        return executable
-    }
+    abstract Property<Boolean> getOptimize()
 
-    void setExecutable(final String executable) {
-        this.executable = executable
-    }
+    abstract Property<Boolean> getResolvePackages()
 
-    boolean getOptimize() {
-        return optimize
-    }
+    abstract Property<Integer> getOptimizeRuns()
 
-    void setOptimize(final boolean optimize) {
-        this.optimize = optimize
-    }
+    abstract Property<Boolean> getPrettyJson()
 
-    Boolean getResolvePackages() {
-        return resolvePackages
-    }
+    abstract Property<Boolean> getOverwrite()
 
-    void setResolvePackages(Boolean resolvePackages) {
-        this.resolvePackages = resolvePackages
-    }
+    abstract Property<Boolean> getIgnoreMissing()
 
-    int getOptimizeRuns() {
-        return optimizeRuns
-    }
+    abstract SetProperty<String> getAllowPaths()
 
-    void setOptimizeRuns(final int optimizeRuns) {
-        this.optimizeRuns = optimizeRuns
-    }
+    abstract MapProperty<String, String> getPathRemappings()
 
-    boolean getPrettyJson() {
-        return prettyJson
-    }
+    abstract Property<EVMVersion> getEvmVersion()
 
-    void setPrettyJson(final boolean prettyJson) {
-        this.prettyJson = prettyJson
-    }
+    abstract ListProperty<OutputComponent> getOutputComponents()
 
-    boolean getOverwrite() {
-        return overwrite
-    }
-
-    void setOverwrite(final boolean overwrite) {
-        this.overwrite = overwrite
-    }
-
-    Boolean getIgnoreMissing() {
-        return ignoreMissing
-    }
-
-    void setIgnoreMissing(final Boolean ignoreMissing) {
-        this.ignoreMissing = ignoreMissing
-    }
-
-    List<String> getAllowPaths() {
-        return allowPaths
-    }
-
-    void setAllowPaths(final List<String> allowPaths) {
-        this.allowPaths = allowPaths
-    }
-
-    Map<String, String> getPathRemappings() {
-        return pathRemappings
-    }
-
-    void setPathRemappings(Map<String, String> pathRemappings) {
-        this.pathRemappings = pathRemappings
-    }
-
-    EVMVersion getEvmVersion() {
-        return evmVersion
-    }
-
-    void setEvmVersion(final EVMVersion evmVersion) {
-        this.evmVersion = evmVersion
-    }
-
-    OutputComponent[] getOutputComponents() {
-        return outputComponents
-    }
-
-    void setOutputComponents(final OutputComponent[] outputComponents) {
-        this.outputComponents = outputComponents
-    }
-
-    CombinedOutputComponent[] getCombinedOutputComponents() {
-        return combinedOutputComponents
-    }
-
-    void setCombinedOutputComponents(final CombinedOutputComponent[] combinedOutputComponents) {
-        this.combinedOutputComponents = combinedOutputComponents
-    }
+    abstract ListProperty<CombinedOutputComponent> getCombinedOutputComponents()
 }

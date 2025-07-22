@@ -26,18 +26,14 @@ import javax.inject.Inject
  * SoliditySourceSet default implementation.
  */
 @CompileStatic
-class DefaultSoliditySourceSet extends DefaultSourceDirectorySet implements SoliditySourceSet, HasPublicType {
+abstract class DefaultSoliditySourceSet extends DefaultSourceDirectorySet implements SoliditySourceSet, HasPublicType {
 
     private final SourceDirectorySet allSolidity
-    private EVMVersion evmVersion
-    private String version
-    private Boolean optimize
-    private Integer optimizeRuns
-    private Boolean ignoreMissing
 
     @Inject
     DefaultSoliditySourceSet(
             final SourceDirectorySet sourceDirectorySet,
+            final SolidityExtension solidity,
             final ObjectFactory objectFactory,
             final TaskDependencyFactory taskDependencyFactory) {
         super(sourceDirectorySet, taskDependencyFactory);
@@ -45,6 +41,12 @@ class DefaultSoliditySourceSet extends DefaultSourceDirectorySet implements Soli
         allSolidity = objectFactory.sourceDirectorySet("allSolidity", displayName)
         allSolidity.getFilter().include("**/*.sol")
         allSolidity.source(this)
+
+        evmVersion.convention(solidity.evmVersion)
+        version.convention(solidity.version)
+        optimize.convention(solidity.optimize)
+        optimizeRuns.convention(solidity.optimizeRuns)
+        ignoreMissing.convention(solidity.ignoreMissing)
     }
 
     @Override
@@ -55,55 +57,5 @@ class DefaultSoliditySourceSet extends DefaultSourceDirectorySet implements Soli
     @Override
     TypeOf<?> getPublicType() {
         return TypeOf.typeOf(SoliditySourceSet.class)
-    }
-
-    @Override
-    void setEvmVersion(EVMVersion evmVersion) {
-        this.evmVersion =  evmVersion
-    }
-
-    @Override
-    EVMVersion getEvmVersion() {
-        return this.evmVersion
-    }
-
-    @Override
-    void setVersion(String version) {
-        this.version =  version
-    }
-
-    @Override
-    String getVersion() {
-        return this.version
-    }
-
-    @Override
-    void setOptimize(Boolean optimize) {
-        this.optimize = optimize
-    }
-
-    @Override
-    Boolean getOptimize() {
-        return this.optimize
-    }
-
-    @Override
-    void setOptimizeRuns(Integer optimizeRuns) {
-        this.optimizeRuns = optimizeRuns
-    }
-
-    @Override
-    Integer getOptimizeRunsn() {
-        return this.optimizeRuns
-    }
-
-    @Override
-    void setIgnoreMissing(Boolean ignoreMissing) {
-        this.ignoreMissing = ignoreMissing
-    }
-
-    @Override
-    Boolean getIgnoreMissing() {
-        return this.ignoreMissing
     }
 }

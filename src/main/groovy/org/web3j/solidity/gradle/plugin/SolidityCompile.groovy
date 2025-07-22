@@ -15,7 +15,10 @@ package org.web3j.solidity.gradle.plugin
 import groovy.transform.CompileStatic
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.*
 import org.gradle.process.ExecOperations
 import org.web3j.sokt.SolcInstance
@@ -31,51 +34,42 @@ abstract class SolidityCompile extends SourceTask {
 
     @Input
     @Optional
-    private String executable
+    abstract Property<String> getExecutable()
 
     @Input
     @Optional
-    private String version
+    abstract Property<String> getVersion()
+
+    @Input
+    abstract Property<Boolean> getOverwrite()
+
+    @Input
+    abstract Property<Boolean> getOptimize()
+
+    @Input
+    abstract Property<Integer> getOptimizeRuns()
+
+    @Input
+    abstract Property<Boolean> getPrettyJson()
+
+    @Input
+    abstract Property<Boolean> getIgnoreMissing()
+
+    @Input
+    abstract SetProperty<String> getAllowPaths()
+
+    @Input
+    abstract MapProperty<String, String> getPathRemappings()
 
     @Input
     @Optional
-    private Boolean overwrite
+    abstract Property<EVMVersion> getEvmVersion()
 
     @Input
-    @Optional
-    private Boolean optimize
+    abstract ListProperty<OutputComponent> getOutputComponents()
 
     @Input
-    @Optional
-    private Integer optimizeRuns
-
-    @Input
-    @Optional
-    private Boolean prettyJson
-
-    @Input
-    @Optional
-    private Boolean ignoreMissing
-
-    @Input
-    @Optional
-    private Set<String> allowPaths
-
-    @Input
-    @Optional
-    private Map<String, String> pathRemappings
-
-    @Input
-    @Optional
-    private EVMVersion evmVersion
-
-    @Input
-    @Optional
-    private OutputComponent[] outputComponents
-
-    @Input
-    @Optional
-    private CombinedOutputComponent[] combinedOutputComponents
+    abstract ListProperty<CombinedOutputComponent> getCombinedOutputComponents()
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
@@ -111,42 +105,42 @@ abstract class SolidityCompile extends SourceTask {
         for (def contract in source) {
             List<String> options = []
 
-            for (output in outputComponents) {
+            for (output in outputComponents.get()) {
                 options.add("--$output".toString())
             }
 
-            if (combinedOutputComponents?.length > 0) {
+            if (combinedOutputComponents.get().size() > 0) {
                 options.add("--combined-json")
-                options.add(combinedOutputComponents.join(","))
+                options.add(combinedOutputComponents.get().join(","))
             }
 
-            if (optimize) {
+            if (optimize.get()) {
                 options.add('--optimize')
 
-                if (0 < optimizeRuns) {
+                if (0 < optimizeRuns.get()) {
                     options.add('--optimize-runs')
-                    options.add(optimizeRuns.toString())
+                    options.add(optimizeRuns.get().toString())
                 }
             }
 
-            if (overwrite) {
+            if (overwrite.get()) {
                 options.add('--overwrite')
             }
 
-            if (prettyJson) {
+            if (prettyJson.get()) {
                 options.add('--pretty-json')
             }
 
-            if (ignoreMissing) {
+            if (ignoreMissing.get()) {
                 options.add('--ignore-missing')
             }
 
-            if (!allowPaths.isEmpty() || !imports.isEmpty()) {
+            if (!allowPaths.get().isEmpty() || !imports.isEmpty()) {
                 options.add("--allow-paths")
-                options.add((allowPaths + imports.collect { new File(nodeModulesDir.get().asFile, it).absolutePath }).join(','))
+                options.add((allowPaths.get() + imports.collect { new File(nodeModulesDir.get().asFile, it).absolutePath }).join(','))
             }
 
-            pathRemappings.each { key, value ->
+            pathRemappings.get().each { key, value ->
                 options.add("$key=$value".toString())
             }
 
@@ -162,15 +156,15 @@ abstract class SolidityCompile extends SourceTask {
             }
             options.add(contract.absolutePath)
 
-            def compilerVersion = version
+            def compilerVersion = version.getOrNull()
             def solidityFile = new SolidityFile(contract.absolutePath)
-            String compilerExecutable = executable
+            String compilerExecutable = executable.getOrNull()
             SolcInstance compilerInstance
 
             if (compilerExecutable == null) {
                 if (compilerVersion != null) {
                     def resolvedVersion = new VersionResolver(".web3j").getSolcReleases().stream().filter {
-                        it.version == version && it.isCompatibleWithOs()
+                        it.version == version.get() && it.isCompatibleWithOs()
                     }.findAny().orElseThrow {
                         return new Exception("Failed to resolve Solidity version $version from available versions. " +
                                 "You may need to use a custom executable instead.")
@@ -186,9 +180,9 @@ abstract class SolidityCompile extends SourceTask {
                 }
             }
 
-            if (evmVersion != null && supportsEvmVersionOption(compilerVersion)) {
+            if (evmVersion.isPresent() && supportsEvmVersionOption(compilerVersion)) {
                 options.add("--evm-version")
-                options.add(evmVersion.value)
+                options.add(evmVersion.get().value)
             }
 
             if (Paths.get(compilerExecutable).toFile().exists()) {
@@ -210,7 +204,7 @@ abstract class SolidityCompile extends SourceTask {
                 }
             }
 
-            if (combinedOutputComponents?.length > 0) {
+            if (combinedOutputComponents.get().size() > 0) {
                 def metajsonFile = new File(outputs.files.singleFile, "combined.json")
                 def contractName = contract.getName()
                 def newMetaName = contractName.substring(0, contractName.length() - 4) + ".json"
@@ -220,103 +214,7 @@ abstract class SolidityCompile extends SourceTask {
         }
     }
 
-    String getExecutable() {
-        return executable
-    }
-
-    void setExecutable(final String executable) {
-        this.executable = executable
-    }
-
-    String getVersion() {
-        return version
-    }
-
-    void setVersion(String version) {
-        this.version = version
-    }
-
-    static boolean supportsEvmVersionOption(String version) {
+    private static boolean supportsEvmVersionOption(String version) {
         return version.split('\\.').last().toInteger() >= 24 || version.split('\\.')[1].toInteger() > 4
-    }
-
-    Boolean getOverwrite() {
-        return overwrite
-    }
-
-    void setOverwrite(final Boolean overwrite) {
-        this.overwrite = overwrite
-    }
-
-    Boolean getOptimize() {
-        return optimize
-    }
-
-    void setOptimize(final Boolean optimize) {
-        this.optimize = optimize
-    }
-
-    Integer getOptimizeRuns() {
-        return optimizeRuns
-    }
-
-    void setOptimizeRuns(final Integer optimizeRuns) {
-        this.optimizeRuns = optimizeRuns
-    }
-
-    Boolean getPrettyJson() {
-        return prettyJson
-    }
-
-    void setPrettyJson(final Boolean prettyJson) {
-        this.prettyJson = prettyJson
-    }
-
-    Boolean getIgnoreMissing() {
-        return ignoreMissing
-    }
-
-    void setIgnoreMissing(final Boolean ignoreMissing) {
-        this.ignoreMissing = ignoreMissing
-    }
-
-    Map<String, String> getPathRemappings() {
-        return pathRemappings
-    }
-
-    void setPathRemappings(Map<String, String> pathRemappings) {
-        this.pathRemappings = pathRemappings
-    }
-
-    Set<String> getAllowPaths() {
-        return allowPaths
-    }
-
-    void setAllowPaths(final Set<String> allowPaths) {
-        this.allowPaths = allowPaths
-    }
-
-    EVMVersion getEvmVersion() {
-        return evmVersion
-    }
-
-    void setEvmVersion(final EVMVersion evmVersion) {
-        this.evmVersion = evmVersion
-    }
-
-    OutputComponent[] getOutputComponents() {
-        return outputComponents
-    }
-
-    void setOutputComponents(final OutputComponent[] outputComponents) {
-        this.outputComponents = outputComponents
-    }
-
-    CombinedOutputComponent[] getCombinedOutputComponents() {
-        return combinedOutputComponents
-    }
-
-    void setCombinedOutputComponents(CombinedOutputComponent[] combinedOutputComponents) {
-        this.combinedOutputComponents = combinedOutputComponents
     }
 }

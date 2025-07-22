@@ -14,6 +14,7 @@ package org.web3j.solidity.gradle.plugin
 
 import groovy.transform.CompileStatic
 import org.gradle.api.file.SourceDirectorySet
+import org.gradle.api.provider.Property
 
 /**
  * Source set for Solidity classes in a Gradle project.
@@ -29,24 +30,14 @@ interface SoliditySourceSet extends SourceDirectorySet {
 
     String NAME = "solidity"
 
-    void setEvmVersion(EVMVersion evmVersion)
+    Property<EVMVersion> getEvmVersion()
 
-    EVMVersion getEvmVersion()
+    Property<String> getVersion()
 
-    void setVersion(String version)
+    Property<Boolean> getOptimize()
 
-    String getVersion()
+    Property<Integer> getOptimizeRuns()
 
-    void setOptimize(Boolean optimize)
-
-    Boolean getOptimize()
-
-    void setOptimizeRuns(Integer optimizeRuns)
-
-    Integer getOptimizeRunsn()
-
-    void setIgnoreMissing(Boolean ignoreMissing)
-
-    Boolean getIgnoreMissing()
+    Property<Boolean> getIgnoreMissing()
 
 }

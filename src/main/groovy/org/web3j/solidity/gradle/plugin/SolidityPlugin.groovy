@@ -45,41 +45,42 @@ class SolidityPlugin implements Plugin<Project> {
     }
 
     @Override
-    void apply(final Project target) {
-        target.pluginManager.apply(JavaPlugin.class)
-        target.pluginManager.apply(NodePlugin.class)
-        target.extensions.create(SolidityExtension.NAME, SolidityExtension, target)
+    void apply(final Project project) {
+        project.pluginManager.apply(JavaPlugin.class)
+        project.pluginManager.apply(NodePlugin.class)
+        def solidityExtension = project.extensions.create(SolidityExtension.NAME, SolidityExtension)
 
-        final SourceSetContainer sourceSets = target.extensions.getByType(SourceSetContainer.class)
+        final SourceSetContainer sourceSets = project.extensions.getByType(SourceSetContainer.class)
 
-        sourceSets.all { SourceSet sourceSet ->
-            configureSourceSet(target, sourceSet)
+        sourceSets.configureEach { SourceSet sourceSet ->
+            configureSourceSet(project, solidityExtension, sourceSet)
         }
         // Set nodeProjectDir to build before the node plugin evaluation
-        def nodeExtension = target.extensions.getByName(NodeExtension.NAME) as NodeExtension
-        nodeExtension.nodeProjectDir = target.objects.directoryProperty().convention(target.layout.buildDirectory)
+        def nodeExtension = project.extensions.getByName(NodeExtension.NAME) as NodeExtension
+        nodeExtension.nodeProjectDir.set(project.layout.buildDirectory)
         nodeExtension.download.set(true)
 
-        target.afterEvaluate {
-            sourceSets.all { SourceSet sourceSet ->
-                configureSolidityCompile(target, sourceSet, nodeExtension.nodeProjectDir)
-                configureAllowPath(target, sourceSet)
+        project.afterEvaluate {
+            sourceSets.configureEach { SourceSet sourceSet ->
+                configureSolidityCompile(project, sourceSet, nodeExtension.nodeProjectDir)
+                configureAllowPath(project, sourceSet)
                 sourceSet.allSource.srcDirs.forEach {
                     resolvedSolidity.srcDir(it)
                 }
             }
-            configureSolidityResolve(target, nodeExtension.nodeProjectDir)
+            configureSolidityResolve(project, nodeExtension.nodeProjectDir)
         }
     }
 
     /**
      * Add default source set for Solidity.
      */
-    private void configureSourceSet(final Project project, final SourceSet sourceSet) {
+    private void configureSourceSet(final Project project, final SolidityExtension solidityExtension, final SourceSet sourceSet) {
 
         def srcSetName = capitalize((CharSequence) sourceSet.name)
         def soliditySourceSet = objectFactory.newInstance(DefaultSoliditySourceSet,
-                objectFactory.sourceDirectorySet(NAME, srcSetName + " Solidity Sources"))
+                objectFactory.sourceDirectorySet(NAME, srcSetName + " Solidity Sources"),
+                solidityExtension)
 
         sourceSet.extensions.add(NAME, soliditySourceSet)
 
@@ -125,8 +126,8 @@ class SolidityPlugin implements Plugin<Project> {
         } else {
             compileTask.optimize = project.solidity.optimize
         }
-        if (soliditySourceSet.getOptimizeRunsn()){
-            compileTask.optimizeRuns = soliditySourceSet.getOptimizeRunsn()
+        if (soliditySourceSet.optimizeRuns){
+            compileTask.optimizeRuns = soliditySourceSet.optimizeRuns
         } else {
             compileTask.optimizeRuns = project.solidity.optimizeRuns
         }
