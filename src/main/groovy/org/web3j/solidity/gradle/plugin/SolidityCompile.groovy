@@ -87,17 +87,6 @@ abstract class SolidityCompile extends SourceTask {
     @Inject
     protected abstract ExecOperations getExec();
 
-    SolidityCompile() {
-        resolvedImports.convention(project.provider {
-            // Optional file input workaround: https://github.com/gradle/gradle/issues/2016
-            // This is a provider that is only triggered when not overwritten (solidity.resolvePackages = false).
-            def emptyImportsFile = project.layout.buildDirectory.file("sol-imports-empty.txt").get()
-            emptyImportsFile.asFile.parentFile.mkdirs()
-            emptyImportsFile.asFile.createNewFile()
-            return emptyImportsFile
-        })
-    }
-
     @TaskAction
     void compileSolidity() {
         final imports = resolvedImports.get().asFile.readLines().findAll { !it.isEmpty() }
