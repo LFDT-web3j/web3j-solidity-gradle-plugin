@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [0.6.1]() (Upcoming)
+# [0.7.0](https://github.com/LFDT-web3j/web3j-solidity-gradle-plugin/releases/tag/v0.7.0) (Upcoming)
 
 ### Bug Fixes
 
@@ -11,11 +11,12 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-*
+* Full Gradle 9 compatibility [#86](https://github.com/hyperledger/web3j-solidity-gradle-plugin/pull/86)
+* Full Gradle Configuration Cache compatibility [#86](https://github.com/hyperledger/web3j-solidity-gradle-plugin/pull/86)
 
 ### BREAKING CHANGES
 
-*
+* The `solidity` DSL now uses [Gradle Properties/Providers](https://docs.gradle.org/current/userguide/properties_providers.html) for lazy configuration [#86](https://github.com/hyperledger/web3j-solidity-gradle-plugin/pull/86)
 
 # [0.6.0](https://github.com/LFDT-web3j/web3j-solidity-gradle-plugin/releases/tag/v0.6.0) (2025-04-09)
 
