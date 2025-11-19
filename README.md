@@ -96,10 +96,10 @@ sourceSets {
                 "my/custom/path/to/solidity"
             }
             output.resourcesDir = file('out/bin/compiledSol')
-            setEvmVersion('ISTANBUL')
-            setOptimize(true)
-            setOptimizeRuns(200)
-            setVersion('0.8.12')
+            evmVersion = 'ISTANBUL'
+            optimize = true
+            optimizeRuns = 200
+            version = '0.8.12'
         }
     }
 }

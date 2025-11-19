@@ -18,13 +18,12 @@ import com.github.gradle.node.npm.task.NpmInstallTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.model.ObjectFactory
+import org.gradle.api.file.RegularFile
 import org.gradle.api.plugins.JavaPlugin
-import org.gradle.api.plugins.JavaPluginConvention
+import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.SourceSet
 import org.gradle.api.tasks.SourceSetContainer
-
-import javax.inject.Inject
+import org.gradle.language.jvm.tasks.ProcessResources
 
 import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize
 import static org.web3j.solidity.gradle.plugin.SoliditySourceSet.NAME
@@ -34,63 +33,78 @@ import static org.web3j.solidity.gradle.plugin.SoliditySourceSet.NAME
  */
 class SolidityPlugin implements Plugin<Project> {
 
-    private final ObjectFactory objectFactory
-    private final SoliditySourceSet resolvedSolidity
-
-    @Inject
-    SolidityPlugin(final ObjectFactory objectFactory) {
-        this.objectFactory = objectFactory
-        this.resolvedSolidity = new DefaultSoliditySourceSet("All", objectFactory)
-    }
-
     @Override
-    void apply(final Project target) {
-        target.pluginManager.apply(JavaPlugin.class)
-        target.pluginManager.apply(NodePlugin.class)
-        target.extensions.create(SolidityExtension.NAME,
-                SolidityExtension, target)
+    void apply(final Project project) {
+        project.pluginManager.apply(JavaPlugin.class)
+        project.pluginManager.apply(NodePlugin.class)
+        project.extensions.create(SolidityExtension.NAME, SolidityExtension)
 
-        final SourceSetContainer sourceSets = target.convention
-                .getPlugin(JavaPluginConvention.class).sourceSets
-
-        sourceSets.all { SourceSet sourceSet ->
-            configureSourceSet(target, sourceSet)
-        }
-        // Set nodeProjectDir to build before the node plugin evaluation
-        def nodeExtension = target.extensions.getByName(NodeExtension.NAME) as NodeExtension
-        nodeExtension.nodeProjectDir = target.objects.directoryProperty().convention(target.layout.buildDirectory)
+        // Set nodeProjectDir to 'build' before the node plugin evaluation
+        def nodeExtension = project.extensions.getByName(NodeExtension.NAME) as NodeExtension
+        nodeExtension.nodeProjectDir.set(project.layout.buildDirectory)
         nodeExtension.download.set(true)
 
-        target.afterEvaluate {
-            sourceSets.all { SourceSet sourceSet ->
-                configureSolidityCompile(target, sourceSet)
-                configureAllowPath(target, sourceSet)
-                sourceSet.allSource.srcDirs.forEach {
-                    resolvedSolidity.solidity.srcDir(it)
-                }
-            }
-            configureSolidityResolve(target, nodeExtension.nodeProjectDir)
+        final sourceSets = project.extensions.getByType(SourceSetContainer.class)
+
+        configureSolidityResolve(project, nodeExtension.nodeProjectDir)
+
+        sourceSets.configureEach { SourceSet sourceSet ->
+            configureAllowPath(project, sourceSet)
+            configureSourceSet(project, sourceSet)
+            configureSolidityCompile(project, sourceSet, nodeExtension.nodeProjectDir)
+        }
+    }
+
+    private static void configureAllowPath(final Project project, final SourceSet sourceSet) {
+        def solidity = project.extensions.getByType(SolidityExtension)
+        def allowPath = project.layout.projectDirectory.dir("src/$sourceSet.name/$NAME")
+        solidity.allowPaths.add(project.relativePath(allowPath.asFile))
+    }
+
+    private static void configureSolidityResolve(Project project, DirectoryProperty nodeProjectDir) {
+        def extractSolidityImports = project.tasks.register("extractSolidityImports", SolidityExtractImports) {
+            it.description = "Extracts imports of external Solidity contract modules."
+            it.packageJson.set(nodeProjectDir.file("package.json"))
+        }
+        def npmInstall = project.tasks.named(NpmInstallTask.NAME) {
+            it.dependsOn(extractSolidityImports)
+        }
+        project.tasks.register("resolveSolidity", SolidityResolve) {
+            it.description = "Resolve external Solidity contract modules."
+
+            it.dependsOn(npmInstall)
+            it.packageJson.set(nodeProjectDir.file("package.json"))
+            it.nodeModules.set(nodeProjectDir.dir("node_modules"))
+
+            it.allImports.set(project.layout.buildDirectory.file("sol-imports-all.txt"))
         }
     }
 
     /**
      * Add default source set for Solidity.
      */
-    private void configureSourceSet(final Project project, final SourceSet sourceSet) {
+    private static void configureSourceSet(final Project project, final SourceSet sourceSet) {
+        def solidity = project.extensions.getByType(SolidityExtension)
 
         def srcSetName = capitalize((CharSequence) sourceSet.name)
-        def soliditySourceSet = new DefaultSoliditySourceSet(srcSetName, objectFactory)
+        def soliditySourceSet = project.objects.newInstance(DefaultSoliditySourceSet,
+                project.objects.sourceDirectorySet(NAME, srcSetName + " Solidity Sources"),
+                solidity)
 
-        sourceSet.convention.plugins.put(NAME, soliditySourceSet)
+        sourceSet.extensions.add(NAME, soliditySourceSet)
 
-        def defaultSrcDir = new File(project.projectDir, "src/$sourceSet.name/$NAME")
-        def defaultOutputDir = new File(project.buildDir, "resources/$sourceSet.name/$NAME")
+        def defaultSrcDir = project.layout.projectDirectory.dir("src/$sourceSet.name/$NAME")
+        def defaultOutputDir = project.layout.buildDirectory.dir("solidity/$sourceSet.name/$NAME")
 
-        soliditySourceSet.solidity.srcDir(defaultSrcDir)
-        soliditySourceSet.solidity.destinationDirectory = defaultOutputDir
+        soliditySourceSet.srcDir(defaultSrcDir)
+        soliditySourceSet.destinationDirectory.set(defaultOutputDir)
 
-        sourceSet.allJava.source(soliditySourceSet.solidity)
-        sourceSet.allSource.source(soliditySourceSet.solidity)
+        sourceSet.allJava.source(soliditySourceSet)
+        sourceSet.allSource.source(soliditySourceSet)
+
+        project.tasks.named("extractSolidityImports", SolidityExtractImports) {
+            it.sources.from(soliditySourceSet)
+        }
     }
 
     /**
@@ -101,95 +115,52 @@ class SolidityPlugin implements Plugin<Project> {
      * is <code>compileSolidity</code> and for <code>test</code>
      * <code>compileTestSolidity</code>.
      */
-    private static void configureSolidityCompile(final Project project, final SourceSet sourceSet) {
+    private static void configureSolidityCompile(final Project project, final SourceSet sourceSet, final DirectoryProperty nodeProjectDir) {
+        def solidity = project.extensions.getByType(SolidityExtension)
+        def soliditySourceSet = sourceSet.extensions.getByType(SoliditySourceSet)
+        def resolveSolidity = project.tasks.named('resolveSolidity', SolidityResolve)
 
-        def compileTask = project.tasks.create(sourceSet.getTaskName("compile", "Solidity"), SolidityCompile)
-        def soliditySourceSet = sourceSet.convention.plugins[NAME] as SoliditySourceSet
+        def compileTask = project.tasks.register(sourceSet.getTaskName("compile", "Solidity"), SolidityCompile) {
+            it.description = "Compiles $sourceSet.name Solidity source."
 
-        if (!requiresBundledExecutable(project)) {
-            // Leave executable as specified by the user
-            compileTask.executable = project.solidity.executable
-        }
-        compileTask.pathRemappings = project.solidity.pathRemappings
-        if (soliditySourceSet.getVersion()){
-            compileTask.version = soliditySourceSet.getVersion()
-        } else {
-            compileTask.version = project.solidity.version
-        }
-        compileTask.source = soliditySourceSet.solidity
-        compileTask.outputComponents = project.solidity.outputComponents
-        compileTask.combinedOutputComponents = project.solidity.combinedOutputComponents
-        compileTask.overwrite = project.solidity.overwrite
-        if (soliditySourceSet.getOptimize()){
-            compileTask.optimize = soliditySourceSet.getOptimize()
-        } else {
-            compileTask.optimize = project.solidity.optimize
-        }
-        if (soliditySourceSet.getOptimizeRunsn()){
-            compileTask.optimizeRuns = soliditySourceSet.getOptimizeRunsn()
-        } else {
-            compileTask.optimizeRuns = project.solidity.optimizeRuns
-        }
-        compileTask.prettyJson = project.solidity.prettyJson
-        if (soliditySourceSet.getEvmVersion()){
-            compileTask.evmVersion = soliditySourceSet.getEvmVersion()
-        } else {
-            compileTask.evmVersion = project.solidity.evmVersion
-        }
-        compileTask.allowPaths = project.solidity.allowPaths
+            it.source = soliditySourceSet
+            it.destinationDirectory.convention(soliditySourceSet.destinationDirectory)
+            it.destinationSubDirectory.convention("solidity")
+            it.nodeModulesDir.convention(nodeProjectDir.dir("node_modules"))
 
-        if (soliditySourceSet.getIgnoreMissing()){
-            compileTask.ignoreMissing = soliditySourceSet.getIgnoreMissing()
-        } else {
-            compileTask.ignoreMissing = project.solidity.ignoreMissing
-        }
-        compileTask.outputs.dir(soliditySourceSet.solidity.destinationDirectory)
-        compileTask.description = "Compiles $sourceSet.name Solidity source."
+            it.executable.convention(solidity.executable)
+            it.pathRemappings.convention(solidity.pathRemappings)
+            it.outputComponents.convention(solidity.outputComponents)
+            it.combinedOutputComponents.convention(solidity.combinedOutputComponents)
+            it.optimize.convention(solidity.optimize)
+            it.overwrite.convention(solidity.overwrite)
+            it.prettyJson.convention(solidity.prettyJson)
+            it.allowPaths.convention(solidity.allowPaths)
 
-        project.getTasks().named('build').configure {
-            it.dependsOn(compileTask)
+            it.version.convention(soliditySourceSet.version)
+            it.optimize.convention(soliditySourceSet.optimize)
+            it.optimizeRuns.convention(soliditySourceSet.optimizeRuns)
+            it.evmVersion.convention(soliditySourceSet.evmVersion)
+            it.ignoreMissing.convention(soliditySourceSet.ignoreMissing)
+
+            it.resolvedImports.set(solidity.resolvePackages.flatMap {
+                it ? resolveSolidity.flatMap { it.allImports } : emptyImports(project)
+            })
+        }
+
+        project.tasks.named('processResources', ProcessResources) {
+            it.from(compileTask)
         }
     }
 
-    private void configureSolidityResolve(Project target, DirectoryProperty nodeProjectDir) {
-
-        if (target.solidity.resolvePackages) {
-            def extractSolidityImports = target.tasks.register("extractSolidityImports", SolidityExtractImports) {
-                it.description = "Extracts imports of external Solidity contract modules."
-                it.sources.from(resolvedSolidity.solidity)
-                it.packageJson.set(nodeProjectDir.file("package.json"))
-            }
-            def npmInstall = target.tasks.named(NpmInstallTask.NAME) {
-                it.dependsOn(extractSolidityImports)
-            }
-            def resolveSolidity = target.tasks.register("resolveSolidity", SolidityResolve) {
-                it.description = "Resolve external Solidity contract modules."
-
-                it.dependsOn(npmInstall)
-                it.packageJson.set(nodeProjectDir.file("package.json"))
-                it.nodeModules.set(nodeProjectDir.dir("node_modules"))
-
-                it.allImports.set(target.layout.buildDirectory.file("sol-imports-all.txt"))
-            }
-
-            final SourceSetContainer sourceSets = target.extensions.getByType(SourceSetContainer.class)
-            sourceSets.all { SourceSet sourceSet ->
-                target.tasks.named(sourceSet.getTaskName("compile", "Solidity"), SolidityCompile) {
-                    it.resolvedImports.set(resolveSolidity.flatMap { it.allImports })
-                }
-            }
+    private static Provider<RegularFile> emptyImports(Project project) {
+        return project.provider {
+            // Optional file input workaround: https://github.com/gradle/gradle/issues/2016
+            // This is a provider that is only triggered when solidity.resolvePackages = false.
+            def emptyImportsFile = project.layout.buildDirectory.file("sol-imports-empty.txt").get()
+            emptyImportsFile.asFile.parentFile.mkdirs()
+            emptyImportsFile.asFile.createNewFile()
+            return emptyImportsFile
         }
-    }
-
-    /**
-     * Configure the SolcJ compiler with the bundled executable.
-     */
-    private static void configureAllowPath(final Project project, final SourceSet sourceSet) {
-        def allowPath = "$project.projectDir/src/$sourceSet.name/$NAME"
-        project.solidity.allowPaths.add(allowPath)
-    }
-
-    private static boolean requiresBundledExecutable(final Project project) {
-        return project.solidity.executable == null
     }
 }

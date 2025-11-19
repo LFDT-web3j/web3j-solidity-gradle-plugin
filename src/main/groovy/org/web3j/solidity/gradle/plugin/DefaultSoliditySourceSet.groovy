@@ -13,54 +13,40 @@
 package org.web3j.solidity.gradle.plugin
 
 import groovy.transform.CompileStatic
-import org.gradle.api.Action
 import org.gradle.api.file.SourceDirectorySet
+import org.gradle.api.internal.file.DefaultSourceDirectorySet
+import org.gradle.api.internal.tasks.TaskDependencyFactory
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.reflect.HasPublicType
 import org.gradle.api.reflect.TypeOf
-import org.gradle.util.ConfigureUtil
+
+import javax.inject.Inject
 
 /**
  * SoliditySourceSet default implementation.
  */
 @CompileStatic
-class DefaultSoliditySourceSet implements SoliditySourceSet, HasPublicType {
+abstract class DefaultSoliditySourceSet extends DefaultSourceDirectorySet implements SoliditySourceSet, HasPublicType {
 
-    private final SourceDirectorySet solidity
     private final SourceDirectorySet allSolidity
-    private EVMVersion evmVersion
-    private String version
-    private Boolean optimize
-    private Integer optimizeRuns
-    private Boolean ignoreMissing
 
+    @Inject
     DefaultSoliditySourceSet(
-            final String displayName,
-            final ObjectFactory objectFactory) {
-
-        final String sourceDirectoryDisplayName = displayName + " Solidity Sources"
-        solidity = objectFactory.sourceDirectorySet(NAME, sourceDirectoryDisplayName)
-        solidity.getFilter().include("**/*.sol")
-        allSolidity = objectFactory.sourceDirectorySet(sourceDirectoryDisplayName, sourceDirectoryDisplayName)
+            final SourceDirectorySet sourceDirectorySet,
+            final SolidityExtension solidity,
+            final ObjectFactory objectFactory,
+            final TaskDependencyFactory taskDependencyFactory) {
+        super(sourceDirectorySet, taskDependencyFactory);
+        getFilter().include("**/*.sol")
+        allSolidity = objectFactory.sourceDirectorySet("allSolidity", displayName)
         allSolidity.getFilter().include("**/*.sol")
-        allSolidity.source(solidity)
-    }
+        allSolidity.source(this)
 
-    @Override
-    SourceDirectorySet getSolidity() {
-        return solidity
-    }
-
-    @Override
-    SoliditySourceSet solidity(final Closure configureClosure) {
-        ConfigureUtil.configure(configureClosure, getSolidity())
-        return this
-    }
-
-    @Override
-    SoliditySourceSet solidity(final Action<? super SourceDirectorySet> configureAction) {
-        configureAction.execute(getSolidity())
-        return this
+        evmVersion.convention(solidity.evmVersion)
+        version.convention(solidity.version)
+        optimize.convention(solidity.optimize)
+        optimizeRuns.convention(solidity.optimizeRuns)
+        ignoreMissing.convention(solidity.ignoreMissing)
     }
 
     @Override
@@ -71,55 +57,5 @@ class DefaultSoliditySourceSet implements SoliditySourceSet, HasPublicType {
     @Override
     TypeOf<?> getPublicType() {
         return TypeOf.typeOf(SoliditySourceSet.class)
-    }
-
-    @Override
-    void setEvmVersion(EVMVersion evmVersion) {
-        this.evmVersion =  evmVersion
-    }
-
-    @Override
-    EVMVersion getEvmVersion() {
-        return this.evmVersion
-    }
-
-    @Override
-    void setVersion(String version) {
-        this.version =  version
-    }
-
-    @Override
-    String getVersion() {
-        return this.version
-    }
-
-    @Override
-    void setOptimize(Boolean optimize) {
-        this.optimize = optimize
-    }
-
-    @Override
-    Boolean getOptimize() {
-        return this.optimize
-    }
-
-    @Override
-    void setOptimizeRuns(Integer optimizeRuns) {
-        this.optimizeRuns = optimizeRuns
-    }
-
-    @Override
-    Integer getOptimizeRunsn() {
-        return this.optimizeRuns
-    }
-
-    @Override
-    void setIgnoreMissing(Boolean ignoreMissing) {
-        this.ignoreMissing = ignoreMissing
-    }
-
-    @Override
-    Boolean getIgnoreMissing() {
-        return this.ignoreMissing
     }
 }

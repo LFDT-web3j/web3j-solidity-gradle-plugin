@@ -12,144 +12,148 @@
  */
 package org.web3j.solidity.gradle.plugin
 
+import groovy.transform.CompileStatic
+import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.MapProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.*
+import org.gradle.process.ExecOperations
 import org.web3j.sokt.SolcInstance
 import org.web3j.sokt.SolidityFile
 import org.web3j.sokt.VersionResolver
 
+import javax.inject.Inject
 import java.nio.file.Paths
 
 @CacheableTask
+@CompileStatic
 abstract class SolidityCompile extends SourceTask {
 
     @Input
     @Optional
-    private String executable
+    abstract Property<String> getExecutable()
 
     @Input
     @Optional
-    private String version
+    abstract Property<String> getVersion()
+
+    @Input
+    abstract Property<Boolean> getOverwrite()
+
+    @Input
+    abstract Property<Boolean> getOptimize()
+
+    @Input
+    abstract Property<Integer> getOptimizeRuns()
+
+    @Input
+    abstract Property<Boolean> getPrettyJson()
+
+    @Input
+    abstract Property<Boolean> getIgnoreMissing()
+
+    @Input
+    abstract SetProperty<String> getAllowPaths()
+
+    @Input
+    abstract MapProperty<String, String> getPathRemappings()
 
     @Input
     @Optional
-    private Boolean overwrite
+    abstract Property<EVMVersion> getEvmVersion()
 
     @Input
-    @Optional
-    private Boolean optimize
+    abstract ListProperty<OutputComponent> getOutputComponents()
 
     @Input
-    @Optional
-    private Integer optimizeRuns
-
-    @Input
-    @Optional
-    private Boolean prettyJson
-
-    @Input
-    @Optional
-    private Boolean ignoreMissing
-
-    @Input
-    @Optional
-    private Set<String> allowPaths
-
-    @Input
-    @Optional
-    private Map<String, String> pathRemappings
-
-    @Input
-    @Optional
-    private EVMVersion evmVersion
-
-    @Input
-    @Optional
-    private OutputComponent[] outputComponents
-
-    @Input
-    @Optional
-    private CombinedOutputComponent[] combinedOutputComponents
+    abstract ListProperty<CombinedOutputComponent> getCombinedOutputComponents()
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     abstract RegularFileProperty getResolvedImports()
 
-    SolidityCompile() {
-        resolvedImports.convention(project.provider {
-            // Optional file input workaround: https://github.com/gradle/gradle/issues/2016
-            // This is a provider that is only triggered when not overwritten (solidity.resolvePackages = false).
-            def emptyImportsFile = project.layout.buildDirectory.file("sol-imports-empty.txt").get()
-            emptyImportsFile.asFile.parentFile.mkdirs()
-            emptyImportsFile.asFile.createNewFile()
-            return emptyImportsFile
-        })
-    }
+    @Input
+    abstract Property<String> getDestinationSubDirectory();
+
+    @OutputDirectory
+    abstract DirectoryProperty getDestinationDirectory();
+
+    @Internal
+    abstract DirectoryProperty getNodeModulesDir()
+
+    @Inject
+    protected abstract ExecOperations getExec();
 
     @TaskAction
     void compileSolidity() {
         final imports = resolvedImports.get().asFile.readLines().findAll { !it.isEmpty() }
-        final File nodeModulesDir = project.node.nodeProjectDir.dir("node_modules").get().asFile
 
         for (def contract in source) {
-            def options = []
+            List<String> options = []
 
-            for (output in outputComponents) {
-                options.add("--$output")
+            for (output in outputComponents.get()) {
+                options.add("--$output".toString())
             }
 
-            if (combinedOutputComponents?.length > 0) {
+            if (combinedOutputComponents.get().size() > 0) {
                 options.add("--combined-json")
-                options.add(combinedOutputComponents.join(","))
+                options.add(combinedOutputComponents.get().join(","))
             }
 
-            if (optimize) {
+            if (optimize.get()) {
                 options.add('--optimize')
 
-                if (0 < optimizeRuns) {
+                if (0 < optimizeRuns.get()) {
                     options.add('--optimize-runs')
-                    options.add(optimizeRuns)
+                    options.add(optimizeRuns.get().toString())
                 }
             }
 
-            if (overwrite) {
+            if (overwrite.get()) {
                 options.add('--overwrite')
             }
 
-            if (prettyJson) {
+            if (prettyJson.get()) {
                 options.add('--pretty-json')
             }
 
-            if (ignoreMissing) {
+            if (ignoreMissing.get()) {
                 options.add('--ignore-missing')
             }
 
-            if (!allowPaths.isEmpty() || !imports.isEmpty()) {
+            if (!allowPaths.get().isEmpty() || !imports.isEmpty()) {
                 options.add("--allow-paths")
-                options.add((allowPaths + imports.collect { new File(nodeModulesDir,it).absolutePath }).join(','))
+                options.add((allowPaths.get() + imports.collect { new File(nodeModulesDir.get().asFile, it).absolutePath }).join(','))
             }
 
-            pathRemappings.each { key, value ->
-                options.add("$key=$value")
+            pathRemappings.get().each { key, value ->
+                options.add("$key=$value".toString())
             }
 
             imports.each { provider ->
-                options.add("$provider=$nodeModulesDir/$provider")
+                options.add("$provider=${nodeModulesDir.get().asFile}/$provider".toString())
             }
 
             options.add('--output-dir')
-            options.add(project.projectDir.relativePath(outputs.files.singleFile))
-            options.add(project.projectDir.relativePath(contract))
+            if (destinationSubDirectory.isPresent()) {
+                options.add(new File(destinationDirectory.get().asFile, destinationSubDirectory.get()).absolutePath)
+            } else {
+                options.add(destinationDirectory.get().asFile.absolutePath)
+            }
+            options.add(contract.absolutePath)
 
-            def compilerVersion = version
-            def solidityFile = new SolidityFile(contract.getAbsolutePath())
-            String compilerExecutable = executable
+            def compilerVersion = version.getOrNull()
+            def solidityFile = new SolidityFile(contract.absolutePath)
+            String compilerExecutable = executable.getOrNull()
             SolcInstance compilerInstance
 
             if (compilerExecutable == null) {
                 if (compilerVersion != null) {
                     def resolvedVersion = new VersionResolver(".web3j").getSolcReleases().stream().filter {
-                        it.version == version && it.isCompatibleWithOs()
+                        it.version == version.get() && it.isCompatibleWithOs()
                     }.findAny().orElseThrow {
                         return new Exception("Failed to resolve Solidity version $version from available versions. " +
                                 "You may need to use a custom executable instead.")
@@ -165,31 +169,31 @@ abstract class SolidityCompile extends SourceTask {
                 }
             }
 
-            if (evmVersion != null && supportsEvmVersionOption(compilerVersion)) {
+            if (evmVersion.isPresent() && supportsEvmVersionOption(compilerVersion)) {
                 options.add("--evm-version")
-                options.add(evmVersion.value)
+                options.add(evmVersion.get().value)
             }
 
             if (Paths.get(compilerExecutable).toFile().exists()) {
                 // if the executable string is a file which exists, it may be a direct reference
                 // to the solc executable with a space in the path (Windows)
-                project.exec {
-                    executable = compilerExecutable
-                    args = options
+                exec.exec {
+                    it.executable = compilerExecutable
+                    it.args = options
                 }
             } else {
                 // otherwise we assume it's a normal reference to solidity or docker, possibly with args
                 def executableParts = compilerExecutable.split(' ')
                 options.addAll(0, executableParts.drop(1))
-                project.exec {
+                exec.exec {
                     // Use first part as executable
-                    executable = executableParts[0]
+                    it.executable = executableParts[0]
                     // Use other parts and options as args
-                    args = options
+                    it.args = options
                 }
             }
 
-            if (combinedOutputComponents?.length > 0) {
+            if (combinedOutputComponents.get().size() > 0) {
                 def metajsonFile = new File(outputs.files.singleFile, "combined.json")
                 def contractName = contract.getName()
                 def newMetaName = contractName.substring(0, contractName.length() - 4) + ".json"
@@ -199,103 +203,7 @@ abstract class SolidityCompile extends SourceTask {
         }
     }
 
-    String getExecutable() {
-        return executable
-    }
-
-    void setExecutable(final String executable) {
-        this.executable = executable
-    }
-
-    String getVersion() {
-        return version
-    }
-
-    void setVersion(String version) {
-        this.version = version
-    }
-
-    static boolean supportsEvmVersionOption(String version) {
+    private static boolean supportsEvmVersionOption(String version) {
         return version.split('\\.').last().toInteger() >= 24 || version.split('\\.')[1].toInteger() > 4
-    }
-
-    Boolean getOverwrite() {
-        return overwrite
-    }
-
-    void setOverwrite(final Boolean overwrite) {
-        this.overwrite = overwrite
-    }
-
-    Boolean getOptimize() {
-        return optimize
-    }
-
-    void setOptimize(final Boolean optimize) {
-        this.optimize = optimize
-    }
-
-    Integer getOptimizeRuns() {
-        return optimizeRuns
-    }
-
-    void setOptimizeRuns(final Integer optimizeRuns) {
-        this.optimizeRuns = optimizeRuns
-    }
-
-    Boolean getPrettyJson() {
-        return prettyJson
-    }
-
-    void setPrettyJson(final Boolean prettyJson) {
-        this.prettyJson = prettyJson
-    }
-
-    Boolean getIgnoreMissing() {
-        return ignoreMissing
-    }
-
-    void setIgnoreMissing(final Boolean ignoreMissing) {
-        this.ignoreMissing = ignoreMissing
-    }
-
-    Map<String, String> getPathRemappings() {
-        return pathRemappings
-    }
-
-    void setPathRemappings(Map<String, String> pathRemappings) {
-        this.pathRemappings = pathRemappings
-    }
-
-    Set<String> getAllowPaths() {
-        return allowPaths
-    }
-
-    void setAllowPaths(final Set<String> allowPaths) {
-        this.allowPaths = allowPaths
-    }
-
-    EVMVersion getEvmVersion() {
-        return evmVersion
-    }
-
-    void setEvmVersion(final EVMVersion evmVersion) {
-        this.evmVersion = evmVersion
-    }
-
-    OutputComponent[] getOutputComponents() {
-        return outputComponents
-    }
-
-    void setOutputComponents(final OutputComponent[] outputComponents) {
-        this.outputComponents = outputComponents
-    }
-
-    CombinedOutputComponent[] getCombinedOutputComponents() {
-        return combinedOutputComponents
-    }
-
-    void setCombinedOutputComponents(CombinedOutputComponent[] combinedOutputComponents) {
-        this.combinedOutputComponents = combinedOutputComponents
     }
 }

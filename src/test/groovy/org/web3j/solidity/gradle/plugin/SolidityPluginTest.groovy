@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals
 import static org.junit.jupiter.api.Assertions.assertTrue
 
 class SolidityPluginTest {
+    final static String gradleVersionUnderTest = System.getProperty("gradleVersionUnderTest")
 
     /**
      * Gradle project directory where the test project will be run.
@@ -91,7 +92,6 @@ class SolidityPluginTest {
                         exclude "$differentVersionsFolderName/**"
                     }
                 }
-            tasks.named("jar").configure { dependsOn("compileSolidity") }
             }
         """)
 
@@ -128,7 +128,6 @@ class SolidityPluginTest {
                     }
                 }
             }
-            tasks.named("jar").configure { dependsOn("compileSolidity") }
         """)
 
         def success = build()
@@ -166,7 +165,6 @@ class SolidityPluginTest {
                        exclude "$differentVersionsFolderName/**"
                    }
                }
-            tasks.named("jar").configure { dependsOn("compileSolidity") }
             }
         """)
 
@@ -201,7 +199,6 @@ class SolidityPluginTest {
                        exclude "$differentVersionsFolderName/**"
                    }
                }
-            tasks.named("jar").configure { dependsOn("compileSolidity") }
             }
         """)
 
@@ -232,13 +229,13 @@ class SolidityPluginTest {
                        exclude "common/**"
                        exclude "openzeppelin/**"
                        exclude "$differentVersionsFolderName/**"
+
+                       setEvmVersion('ISTANBUL')
+                       setOptimize(true)
+                       setOptimizeRuns(200)
+                       setVersion('0.8.12')
                    }
-               setEvmVersion('ISTANBUL')
-               setOptimize(true)
-               setOptimizeRuns(200)
-               setVersion('0.8.12')
                }
-            tasks.named("jar").configure { dependsOn("compileSolidity") }
             }
         """)
 
@@ -342,8 +339,6 @@ class SolidityPluginTest {
                     }
                 }
             }
-    
-            tasks.named("jar").configure { dependsOn("compileSolidity") }
         """)
 
         def success = build()
@@ -353,10 +348,10 @@ class SolidityPluginTest {
     private BuildResult build() {
         return GradleRunner.create()
                 .withProjectDir(testProjectDir.toFile())
-                .withArguments("build", "--info")
+                .withArguments("build", "--info", "-s", "--configuration-cache")
                 .withPluginClasspath()
-                .forwardOutput()
-                .withDebug(true)
-                .build()
+                .forwardOutput().with {
+                    gradleVersionUnderTest? it.withGradleVersion(gradleVersionUnderTest) : it
+                }.build()
     }
 }

@@ -12,18 +12,12 @@
  */
 package org.web3j.solidity.gradle.plugin
 
-import com.github.gradle.node.npm.task.NpmSetupTask
-import com.github.gradle.node.npm.task.NpmTask
 import groovy.json.JsonSlurper
 import groovy.transform.CompileStatic
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.internal.file.FileOperations
-import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
-
-import javax.inject.Inject
 
 @CompileStatic
 @CacheableTask
