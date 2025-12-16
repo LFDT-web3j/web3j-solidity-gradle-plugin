@@ -148,7 +148,7 @@ class SolidityPlugin implements Plugin<Project> {
             })
         }
 
-        project.tasks.named('processResources', ProcessResources) {
+        project.tasks.named(sourceSet.processResourcesTaskName, ProcessResources) {
             it.from(compileTask)
         }
     }
