@@ -1,33 +1,43 @@
 apply plugin: 'jacoco'
 
+def javaProjects = subprojects.findAll { p ->
+    p.plugins.hasPlugin('java') || p.plugins.hasPlugin('java-library')
+}
+
 tasks.register('jacocoRootTestReport', JacocoReport) {
-    dependsOn = subprojects.test
-    getSourceDirectories().from(subprojects.sourceSets.main.allSource.srcDirs)
-    getAdditionalSourceDirs().from(subprojects.sourceSets.main.allSource.srcDirs)
-    getClassDirectories().from(subprojects.sourceSets.main.output)
-    getExecutionData().from(subprojects.jacocoTestReport.executionData)
+    // run tests + create per-project jacoco reports first
+    dependsOn(javaProjects.collect { it.tasks.named('test') })
+    dependsOn(javaProjects.collect { it.tasks.named('jacocoTestReport') })
+
+    def mainSrcDirs = files(javaProjects.collect { it.sourceSets.main.allSource.srcDirs })
+    sourceDirectories.setFrom(mainSrcDirs)
+    additionalSourceDirs.setFrom(mainSrcDirs)
+
+    // execution data from subprojects
+    executionData.setFrom(files(javaProjects.collect {
+        it.tasks.named('jacocoTestReport').get().executionData
+    }))
+
+    // classes with excludes (no afterEvaluate needed)
+    def allMainOutputs = files(javaProjects.collect { it.sourceSets.main.output })
+    classDirectories.setFrom(allMainOutputs.asFileTree.matching {
+        exclude(
+                'org/web3j/abi/datatypes/generated/**',
+                'org/web3j/tuples/generated/**',
+                'org/web3j/ens/contracts/generated/**',
+                'org/gradle/**'
+        )
+    })
+
     reports {
         xml.required.set(true)
     }
 
     doFirst {
-        getExecutionData().from(executionData.findAll { it.exists() })
-    }
-
-    afterEvaluate {
-        getClassDirectories().from(files(classDirectories.files.collect {
-            fileTree(dir: it,
-                    exclude: [
-                            'org/web3j/abi/datatypes/generated/**',
-                            'org/web3j/tuples/generated/**',
-                            'org/web3j/ens/contracts/generated/**',
-                            'org/gradle/**'
-                    ])
-        }))
+        executionData.setFrom(executionData.filter { it.exists() })
     }
 }
 
 jacoco {
     toolVersion = "0.8.10"
 }
-
