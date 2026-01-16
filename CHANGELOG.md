@@ -3,11 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [0.7.0](https://github.com/LFDT-web3j/web3j-solidity-gradle-plugin/releases/tag/v0.7.0) (Upcoming)
+# [0.6.2]() (Upcoming)
 
 ### Bug Fixes
 
 *
+
+### Features
+
+*
+
+### BREAKING CHANGES
+
+*
+
+# [0.6.1](https://github.com/LFDT-web3j/web3j-solidity-gradle-plugin/releases/tag/v0.6.1) (2026-01-15)
+
+### Bug Fixes
+
+* Fix to link to the 'processResources' task of the current source set [#88](https://github.com/LFDT-web3j/web3j-solidity-gradle-plugin/pull/88)
+* Fix jacoco gradle file for publishing [#99](https://github.com/hyperledger/web3j-solidity-gradle-plugin/pull/89)
 
 ### Features
 

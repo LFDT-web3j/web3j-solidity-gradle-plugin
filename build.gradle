@@ -52,7 +52,7 @@ repositories {
 }
 
 ext {
-    soktVersion = '0.5.0'
+    soktVersion = '0.6.0'
     kotlinxSerializationVersion = '1.6.3' // required to CompileStatic with sokt involved
     junitVersion = '5.9.3'
     assertjVersion = '3.25.3'
