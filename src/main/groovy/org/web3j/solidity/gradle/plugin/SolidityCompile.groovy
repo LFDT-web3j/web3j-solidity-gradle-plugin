@@ -22,6 +22,7 @@ import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.*
 import org.gradle.process.ExecOperations
 import org.web3j.sokt.SolcInstance
+import org.web3j.sokt.SolcRelease
 import org.web3j.sokt.SolidityFile
 import org.web3j.sokt.VersionResolver
 
@@ -151,16 +152,21 @@ abstract class SolidityCompile extends SourceTask {
             SolcInstance compilerInstance
 
             if (compilerExecutable == null) {
+                def versionResolver = new VersionResolver(".web3j")
                 if (compilerVersion != null) {
-                    def resolvedVersion = new VersionResolver(".web3j").getSolcReleases().stream().filter {
+                    def resolvedVersion = versionResolver.getSolcReleases().stream().filter {
                         it.version == version.get() && it.isCompatibleWithOs()
                     }.findAny().orElseThrow {
                         return new Exception("Failed to resolve Solidity version $version from available versions. " +
                                 "You may need to use a custom executable instead.")
                     }
-                    compilerInstance = new SolcInstance(resolvedVersion, ".web3j", false)
+                    compilerInstance = new SolcInstance(resolveReleaseForArchitecture(resolvedVersion), ".web3j", false)
                 } else {
-                    compilerInstance = solidityFile.getCompilerInstance(".web3j", true)
+                    def resolvedVersion = versionResolver.getLatestCompatibleVersion(solidityFile.versionPragma)
+                    if (resolvedVersion == null) {
+                        throw new Exception("No compatible solc release could be found for the file: ${solidityFile.sourceFile}")
+                    }
+                    compilerInstance = new SolcInstance(resolveReleaseForArchitecture(resolvedVersion), ".web3j", true, solidityFile)
                     compilerVersion = compilerInstance.solcRelease.version
                 }
 
@@ -205,5 +211,57 @@ abstract class SolidityCompile extends SourceTask {
 
     private static boolean supportsEvmVersionOption(String version) {
         return version.split('\\.').last().toInteger() >= 24 || version.split('\\.')[1].toInteger() > 4
+    }
+
+
+    /**
+     * Resolves the appropriate Solidity compiler binary for the current platform.
+     */
+    static SolcRelease resolveReleaseForArchitecture(SolcRelease release) {
+        if (release.linuxUrl == null) {
+            return release
+        }
+        def linuxUrl = linuxUrlForArchitecture(release.version, release.linuxUrl, System.getProperty("os.name"),
+                System.getProperty("os.arch"))
+
+        return new SolcRelease(release.version, release.windowsUrl, linuxUrl, release.macUrl)
+    }
+
+
+    /**
+     * Returns the native ARM64 solc URL on supported Linux systems; otherwise returns the original URL.
+     */
+    static String linuxUrlForArchitecture(String version, String linuxUrl, String osName, String osArch) {
+        if (isLinuxArm64(osName, osArch) && supportsNativeLinuxArm64(version)) {
+            return "https://github.com/ethereum/solidity/releases/download/v${version}/solc-linux-arm64"
+        }
+        return linuxUrl
+    }
+
+
+    /**
+     * Returns true if the current platform is Linux running on an ARM64 architecture.
+     */
+    private static boolean isLinuxArm64(String osName, String osArch) {
+        return osName.toLowerCase(Locale.ROOT).contains("linux") &&
+                ["aarch64", "arm64"].contains(osArch.toLowerCase(Locale.ROOT))
+    }
+
+    private static boolean supportsNativeLinuxArm64(String version) {
+        return compareVersions(version, "0.8.31") >= 0
+    }
+
+    private static int compareVersions(String version, String otherVersion) {
+        def left = version.tokenize('.').collect { it.toInteger() }
+        def right = otherVersion.tokenize('.').collect { it.toInteger() }
+
+        for (int i = 0; i < Math.max(left.size(), right.size()); i++) {
+            def leftValue = i < left.size() ? left[i] : 0
+            def rightValue = i < right.size() ? right[i] : 0
+            if (leftValue != rightValue) {
+                return leftValue <=> rightValue
+            }
+        }
+        return 0
     }
 }
