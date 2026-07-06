@@ -27,9 +27,11 @@ abstract class SolidityExtractImports extends DefaultTask {
     @Input
     abstract Property<String> getProjectName()
 
-    // Note: intentionally not @SkipWhenEmpty. When a project has no Solidity sources this task
-    // must still run and emit a package.json (with empty dependencies); otherwise the downstream
-    // npmInstall / resolveSolidity tasks fail input validation on the missing file (issue #43).
+    /*
+     Note: intentionally not @SkipWhenEmpty. When a project has no Solidity sources this task
+     must still run and emit a package.json (with empty dependencies); otherwise the downstream
+     npmInstall / resolveSolidity tasks fail input validation on the missing file.
+    */
     @InputFiles
     @PathSensitive(value = PathSensitivity.RELATIVE)
     abstract ConfigurableFileCollection getSources()
