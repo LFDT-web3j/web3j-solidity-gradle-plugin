@@ -387,6 +387,37 @@ class SolidityPluginTest {
         assertEquals(linuxUrl, result)
     }
 
+    /**
+     * Regression test for issue #43 ("packageJsonFile doesn't have a configured value").
+     *
+     * <p>When a project applies the plugin but has no Solidity sources, the import-extraction task
+     * is skipped (it is {@code @SkipWhenEmpty}) and never produces its {@code package.json} output.
+     * That left {@code resolveSolidity} (and, historically, the node plugin's {@code npmInstall})
+     * with input properties pointing at files that do not exist, failing the build during task
+     * validation. Applying the plugin to a source-less project must simply succeed.
+     */
+    @Test
+    void buildSucceedsWithoutSoliditySources() throws IOException {
+        // Remove the sample sources copied in by setup() so the project has no .sol files.
+        testProjectDir.resolve("src/main/solidity").toFile().deleteDir()
+
+        Files.writeString(buildFile, """
+            plugins {
+               id 'org.web3j.solidity'
+            }
+        """)
+
+        def result = GradleRunner.create()
+                .withProjectDir(testProjectDir.toFile())
+                .withArguments("build", "-s")
+                .withPluginClasspath()
+                .forwardOutput().with {
+                    gradleVersionUnderTest ? it.withGradleVersion(gradleVersionUnderTest) : it
+                }.build()
+
+        assertEquals(SUCCESS, result.task(":build").getOutcome())
+    }
+
     private BuildResult build() {
         return GradleRunner.create()
                 .withProjectDir(testProjectDir.toFile())
