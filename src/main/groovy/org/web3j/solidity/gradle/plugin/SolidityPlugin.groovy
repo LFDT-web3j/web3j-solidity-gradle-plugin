@@ -122,8 +122,19 @@ class SolidityPlugin implements Plugin<Project> {
         def soliditySourceSet = sourceSet.extensions.getByType(SoliditySourceSet)
         def resolveSolidity = project.tasks.named('resolveSolidity', SolidityResolve)
 
+        // Skip compilation entirely (no solc resolution/download/execution) when disabled.
+        def compilerEnabled = solidity.compilerEnabled
+
+        // Resolve npm packages only when both compilation and package resolution are enabled;
+        // otherwise the Node/npm resolve chain is never pulled into the task graph.
+        def shouldResolvePackages = compilerEnabled.zip(solidity.resolvePackages) { enabled, resolve ->
+            enabled && resolve
+        }
+
         def compileTask = project.tasks.register(sourceSet.getTaskName("compile", "Solidity"), SolidityCompile) {
             it.description = "Compiles $sourceSet.name Solidity source."
+
+            it.onlyIf { compilerEnabled.get() }
 
             it.source = soliditySourceSet
             it.destinationDirectory.convention(soliditySourceSet.destinationDirectory)
@@ -145,8 +156,8 @@ class SolidityPlugin implements Plugin<Project> {
             it.evmVersion.convention(soliditySourceSet.evmVersion)
             it.ignoreMissing.convention(soliditySourceSet.ignoreMissing)
 
-            it.resolvedImports.set(solidity.resolvePackages.flatMap {
-                it ? resolveSolidity.flatMap { it.allImports } : emptyImports(project)
+            it.resolvedImports.set(shouldResolvePackages.flatMap { resolve ->
+                resolve ? resolveSolidity.flatMap { it.allImports } : emptyImports(project)
             })
         }
 

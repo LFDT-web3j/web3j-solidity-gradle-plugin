@@ -26,9 +26,11 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 
+import static org.gradle.testkit.runner.TaskOutcome.SKIPPED
 import static org.gradle.testkit.runner.TaskOutcome.SUCCESS
 import static org.gradle.testkit.runner.TaskOutcome.UP_TO_DATE
 import static org.junit.jupiter.api.Assertions.assertEquals
+import static org.junit.jupiter.api.Assertions.assertNull
 import static org.junit.jupiter.api.Assertions.assertTrue
 
 class SolidityPluginTest {
@@ -501,6 +503,66 @@ class SolidityPluginTest {
         assertEquals('1.2.3', dependencies['@custom-org/custom-lib'])
         // Declared version overrides the "latest" used for imports detected from sources.
         assertEquals('4.9.0', dependencies['@openzeppelin/contracts'])
+    }
+
+    /**
+     * With {@code solidity.compilerEnabled = false} the plugin can be applied without invoking
+     * the Solidity compiler or the Node/npm machinery: the compile task is skipped (so no solc is
+     * resolved, downloaded or executed) and the {@code resolveSolidity} / {@code npmInstall} chain
+     * is never pulled into the task graph.
+     */
+    @Test
+    void disablingCompilerSkipsCompilationAndNode() throws IOException {
+        Files.writeString(buildFile, """
+            plugins {
+               id 'org.web3j.solidity'
+            }
+            solidity {
+                compilerEnabled = false
+            }
+        """)
+
+        def result = build()
+
+        assertEquals(SUCCESS, result.task(":build").getOutcome())
+        assertEquals(SKIPPED, result.task(":compileSolidity").getOutcome())
+        assertNull(result.task(":resolveSolidity"))
+        assertNull(result.task(":npmInstall"))
+    }
+
+    /**
+     * {@code solidity.resolvePackages = false} disables only the Node/npm integration.
+     * Compilation still happens, but the {@code resolveSolidity} / {@code npmInstall} chain
+     * is never pulled into the task graph.
+     */
+    @Test
+    void disablingPackageResolutionSkipsNodeButStillCompiles() throws IOException {
+        Files.writeString(buildFile, """
+            plugins {
+               id 'org.web3j.solidity'
+            }
+            solidity {
+                resolvePackages = false
+            }
+            sourceSets {
+                main {
+                    solidity {
+                        exclude "minimal_forwarder/**"
+                        exclude "eip/**"
+                        exclude "greeter/**"
+                        exclude "common/**"
+                        exclude "openzeppelin/**"
+                        exclude "$differentVersionsFolderName/**"
+                    }
+                }
+            }
+        """)
+
+        def result = build()
+
+        assertEquals(SUCCESS, result.task(":compileSolidity").getOutcome())
+        assertNull(result.task(":resolveSolidity"))
+        assertNull(result.task(":npmInstall"))
     }
 
     private BuildResult build() {
