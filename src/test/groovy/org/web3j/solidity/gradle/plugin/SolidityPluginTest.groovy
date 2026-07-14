@@ -345,6 +345,48 @@ class SolidityPluginTest {
         assertEquals(SUCCESS, success.task(":compileSolidity").getOutcome())
     }
 
+    @Test
+    void linuxArm64UsesNativeSolcFromVersion0831() {
+        def linuxUrl = SolidityCompile.linuxUrlForArchitecture(
+                "0.8.35",
+                "https://github.com/ethereum/solidity/releases/download/v0.8.35/solc-linux-amd64",
+                "Linux",
+                "aarch64")
+
+        assertEquals("https://github.com/ethereum/solidity/releases/download/v0.8.35/solc-linux-arm64", linuxUrl)
+    }
+
+    @Test
+    void linuxArm64UsesAmd64SolcBeforeVersion0831() {
+        def amd64Url = "https://github.com/ethereum/solidity/releases/download/v0.8.30/solc-linux-amd64"
+
+        def linuxUrl = SolidityCompile.linuxUrlForArchitecture("0.8.30", amd64Url, "Linux", "aarch64")
+
+        assertEquals(amd64Url, linuxUrl)
+    }
+
+    @Test
+    void linuxAmd64KeepsUsingAmd64Solc() {
+        def amd64Url = "https://github.com/ethereum/solidity/releases/download/v0.8.35/solc-linux-amd64"
+
+        def linuxUrl = SolidityCompile.linuxUrlForArchitecture("0.8.35", amd64Url, "Linux", "amd64")
+
+        assertEquals(amd64Url, linuxUrl)
+    }
+
+    @Test
+    void macKeepsExistingSolcBinary() {
+        def linuxUrl = "https://github.com/ethereum/solidity/releases/download/v0.8.35/solc-linux-amd64"
+
+        def result = SolidityCompile.linuxUrlForArchitecture(
+                "0.8.35",
+                linuxUrl,
+                "Mac OS X",
+                "aarch64")
+
+        assertEquals(linuxUrl, result)
+    }
+
     private BuildResult build() {
         return GradleRunner.create()
                 .withProjectDir(testProjectDir.toFile())
