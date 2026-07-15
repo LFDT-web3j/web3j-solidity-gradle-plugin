@@ -388,13 +388,11 @@ class SolidityPluginTest {
     }
 
     /**
-     * Regression test for issue #43 ("packageJsonFile doesn't have a configured value").
+     * Verifies that applying the plugin to a project without Solidity sources completes successfully.
      *
-     * <p>When a project applies the plugin but has no Solidity sources, the import-extraction task
-     * is skipped (it is {@code @SkipWhenEmpty}) and never produces its {@code package.json} output.
-     * That left {@code resolveSolidity} (and, historically, the node plugin's {@code npmInstall})
-     * with input properties pointing at files that do not exist, failing the build during task
-     * validation. Applying the plugin to a source-less project must simply succeed.
+     * <p>When no Solidity files are present, the import extraction task is skipped and does not
+     * generate its {@code package.json} output. Downstream tasks must handle this case gracefully
+     * without failing task validation.
      */
     @Test
     void buildSucceedsWithoutSoliditySources() throws IOException {
