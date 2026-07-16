@@ -76,10 +76,8 @@ directory for compiled code.
 sourceSets {
     main {
         solidity {
-            srcDir {
-                "my/custom/path/to/solidity"
-             }
-             output.resourcesDir = file('out/bin/compiledSol') 
+            srcDir 'my/custom/path/to/solidity'
+            output.resourcesDir = file('out/bin/compiledSol')
         }
     }
 }
@@ -92,9 +90,7 @@ flag values for different sourceSets.
 sourceSets {
     main {
         solidity {
-            srcDir {
-                "my/custom/path/to/solidity"
-            }
+            srcDir 'my/custom/path/to/solidity'
             output.resourcesDir = file('out/bin/compiledSol')
             evmVersion = 'ISTANBUL'
             optimize = true
@@ -104,6 +100,9 @@ sourceSets {
     }
 }
 ```
+
+For Kotlin DSL, configure the source path with `srcDir("my/custom/path/to/solidity")`.
+The `allowPaths` property controls Solidity import resolution only; it does not replace source directories.
 
 ## Gradle Node Plugin
 
