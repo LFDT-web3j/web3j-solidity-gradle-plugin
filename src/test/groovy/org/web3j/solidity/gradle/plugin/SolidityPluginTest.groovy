@@ -387,6 +387,35 @@ class SolidityPluginTest {
         assertEquals(linuxUrl, result)
     }
 
+    /**
+     * Verifies that applying the plugin to a project without Solidity sources completes successfully.
+     *
+     * <p>When no Solidity files are present, the import extraction task is skipped and does not
+     * generate its {@code package.json} output. Downstream tasks must handle this case gracefully
+     * without failing task validation.
+     */
+    @Test
+    void buildSucceedsWithoutSoliditySources() throws IOException {
+        // Remove the sample sources copied in by setup() so the project has no .sol files.
+        testProjectDir.resolve("src/main/solidity").toFile().deleteDir()
+
+        Files.writeString(buildFile, """
+            plugins {
+               id 'org.web3j.solidity'
+            }
+        """)
+
+        def result = GradleRunner.create()
+                .withProjectDir(testProjectDir.toFile())
+                .withArguments("build", "-s")
+                .withPluginClasspath()
+                .forwardOutput().with {
+                    gradleVersionUnderTest ? it.withGradleVersion(gradleVersionUnderTest) : it
+                }.build()
+
+        assertEquals(SUCCESS, result.task(":build").getOutcome())
+    }
+
     private BuildResult build() {
         return GradleRunner.create()
                 .withProjectDir(testProjectDir.toFile())
