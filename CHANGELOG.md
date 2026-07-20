@@ -9,6 +9,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 * Fix support for native Linux ARM64 Solidity compiler binaries for solc versions >= 0.8.31 [#90](https://github.com/LFDT-web3j/web3j-solidity-gradle-plugin/pull/90)
 * Fix build failure when a project has no Solidity sources [#91](https://github.com/LFDT-web3j/web3j-solidity-gradle-plugin/pull/91)
+* Fix incorrect `srcDir` closure syntax in SourceSets documentation causing `Unresolved reference` errors on Gradle 8.x [#92](https://github.com/LFDT-web3j/web3j-solidity-gradle-plugin/pull/92)
 
 ### Features
 
