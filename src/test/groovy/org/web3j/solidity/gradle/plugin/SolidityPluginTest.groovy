@@ -251,6 +251,41 @@ class SolidityPluginTest {
     }
 
     @Test
+    void compileSolidityFromCustomSourceDirectory() throws IOException {
+        def customSourceDir = testProjectDir.resolve("src/test/resources/contracts/EvmCodes")
+        Files.createDirectories(customSourceDir)
+        // Use a self-contained contract (no imports) so the custom srcDir test is isolated
+        Files.copy(
+                testProjectDir.resolve("src/main/solidity/sol5/Greeter.sol"),
+                customSourceDir.resolve("Greeter.sol"),
+                StandardCopyOption.REPLACE_EXISTING
+        )
+
+        Files.writeString(buildFile, """
+            plugins {
+               id 'org.web3j.solidity'
+            }
+
+            sourceSets {
+                main {
+                    solidity {
+                        srcDir "src/test/resources/contracts/EvmCodes"
+                        include "Greeter.sol"
+                        output.resourcesDir = file("out/compiledSol")
+                    }
+                }
+            }
+        """)
+
+        def success = build()
+        assertEquals(SUCCESS, success.task(":compileSolidity").getOutcome())
+
+        def customOutputDir = testProjectDir.resolve("out/compiledSol/solidity")
+        assertTrue(Files.exists(customOutputDir.resolve("Greeter.abi")))
+        assertTrue(Files.exists(customOutputDir.resolve("Greeter.bin")))
+    }
+
+    @Test
     @Disabled("Requires a specific solc version on the machine to pass")
     void compileSolidityWithExecutable() throws IOException {
         Files.writeString(buildFile, """
