@@ -17,6 +17,7 @@ import groovy.transform.CompileStatic
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 
@@ -26,6 +27,16 @@ abstract class SolidityExtractImports extends DefaultTask {
 
     @Input
     abstract Property<String> getProjectName()
+
+    /**
+     * Additional npm packages to resolve, mapped to their version (e.g. {@code 'latest'}).
+     * <p>
+     * These are merged into the generated {@code package.json} on top of the packages detected
+     * from Solidity imports, allowing users to declare dependencies that are not directly imported
+     * or to pin a specific version. Explicitly declared versions take precedence over detected ones.
+     */
+    @Input
+    abstract MapProperty<String, String> getPackages()
 
     /*
      Note: intentionally not @SkipWhenEmpty. When a project has no Solidity sources this task
@@ -45,10 +56,16 @@ abstract class SolidityExtractImports extends DefaultTask {
 
     @TaskAction
     void resolveSolidity() {
-        final Set<String> packages = new TreeSet<>()
+        final Map<String, String> dependencies = new TreeMap<>()
 
         sources.each { contract ->
-            packages.addAll(ImportsResolver.extractImports(contract))
+            ImportsResolver.extractImports(contract).each { detected ->
+                dependencies.put(detected, "latest")
+            }
+        }
+
+        getPackages().get().each { name, version ->
+            dependencies.put(name, version)
         }
 
         final jsonMap = [
@@ -56,9 +73,7 @@ abstract class SolidityExtractImports extends DefaultTask {
                 "description" : "",
                 "repository"  : "",
                 "license"     : "UNLICENSED",
-                "dependencies": packages.collectEntries {
-                    [(it): "latest"]
-                }
+                "dependencies": dependencies
         ]
 
         packageJson.get().asFile.text = new JsonBuilder(jsonMap).toPrettyString()

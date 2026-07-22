@@ -69,6 +69,8 @@ abstract class SolidityExtension {
 
     abstract MapProperty<String, String> getPathRemappings()
 
+    abstract MapProperty<String, String> getPackages()
+
     abstract Property<EVMVersion> getEvmVersion()
 
     abstract ListProperty<OutputComponent> getOutputComponents()
