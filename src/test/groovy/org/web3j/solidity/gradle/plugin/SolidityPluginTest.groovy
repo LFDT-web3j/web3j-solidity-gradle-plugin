@@ -19,6 +19,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
+import groovy.json.JsonSlurper
+
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -449,6 +451,56 @@ class SolidityPluginTest {
                 }.build()
 
         assertEquals(SUCCESS, result.task(":build").getOutcome())
+    }
+
+    /**
+     * Verifies that packages declared via the {@code packages} DSL property are written into the
+     * generated {@code package.json}, and that an explicitly declared version takes precedence over
+     * the {@code latest} version used for packages detected from Solidity imports.
+     */
+    @Test
+    void declaredPackagesAreAddedToPackageJson() throws IOException {
+        Files.writeString(buildFile, """
+            plugins {
+               id 'org.web3j.solidity'
+            }
+            sourceSets {
+                main {
+                    solidity {
+                        exclude "minimal_forwarder/**"
+                        exclude "sol5/**"
+                        exclude "common/**"
+                        exclude "eip/**"
+                        exclude "$differentVersionsFolderName/**"
+                        exclude "greeter/**"
+                    }
+                }
+            }
+            solidity {
+                packages = [
+                    '@custom-org/custom-lib'  : '1.2.3',
+                    '@openzeppelin/contracts' : '4.9.0'
+                ]
+            }
+        """)
+
+        def result = GradleRunner.create()
+                .withProjectDir(testProjectDir.toFile())
+                .withArguments("extractSolidityImports", "-s")
+                .withPluginClasspath()
+                .forwardOutput().with {
+                    gradleVersionUnderTest ? it.withGradleVersion(gradleVersionUnderTest) : it
+                }.build()
+
+        assertEquals(SUCCESS, result.task(":extractSolidityImports").getOutcome())
+
+        def packageJson = testProjectDir.resolve("build/package.json")
+        assertTrue(Files.exists(packageJson))
+
+        def dependencies = new JsonSlurper().parse(packageJson.toFile())['dependencies'] as Map
+        assertEquals('1.2.3', dependencies['@custom-org/custom-lib'])
+        // Declared version overrides the "latest" used for imports detected from sources.
+        assertEquals('4.9.0', dependencies['@openzeppelin/contracts'])
     }
 
     private BuildResult build() {

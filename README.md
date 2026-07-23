@@ -46,6 +46,7 @@ The properties accepted by the DSL are listed in the following table:
 | `ignoreMissing`            | `Boolean`                   | `false`                                           | Ignore missing files.                                           |
 | `allowPaths`               | `List<String>`              | `['src/main/solidity', 'src/test/solidity', ...]` | Allow a given path for imports.                                 |
 | `pathRemappings`           | `Map<String, String>`        | `[ : ]`                                           | Remaps contract imports to target path.                         |
+| `packages`                 | `Map<String, String>`        | `[ : ]`                                           | Additional npm packages (name to version) to resolve.           |
 | `evmVersion`               | `EVMVersion`                | `BYZANTIUM`                                       | Select desired EVM version.                                     |
 | `outputComponents`         | `OutputComponent[]`         | `[BIN, ABI]`                                      | List of output components to produce.                           |
 | `combinedOutputComponents` | `CombinedOutputComponent[]` | `[BIN, BIN_RUNTIME, SRCMAP, SRCMAP_RUNTIME]`      | List of output components in combined JSON output.              |
@@ -128,6 +129,25 @@ modules under the same directory.
 
 **Note:** In case of problems with the `package.json` file, you can delete it, and it will be regenerated with the
 latest versions.
+
+### Resolving additional packages
+
+Only scoped imports (e.g. `@openzeppelin/contracts`) written directly in your `.sol` files are detected
+automatically, and they are always resolved at their `latest` version. Use the `packages` property to declare
+extra npm packages that are not detected automatically, or to pin a specific version:
+
+```groovy
+solidity {
+    packages = [
+        '@consensys-software/permissioning-smart-contracts': 'latest',
+        '@uniswap/v3-core'                                 : '1.0.1'
+    ]
+}
+```
+
+Declared packages are added to the generated `package.json`, installed by npm and remapped automatically, so there
+is no need to disable `resolvePackages` or configure `pathRemappings` manually. A version declared here takes
+precedence over a version detected from imports.
 
 ## Plugin tasks
 

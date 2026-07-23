@@ -62,9 +62,11 @@ class SolidityPlugin implements Plugin<Project> {
     }
 
     private static void configureSolidityResolve(Project project, DirectoryProperty nodeProjectDir) {
+        def solidity = project.extensions.getByType(SolidityExtension)
         def extractSolidityImports = project.tasks.register("extractSolidityImports", SolidityExtractImports) {
             it.description = "Extracts imports of external Solidity contract modules."
             it.packageJson.set(nodeProjectDir.file("package.json"))
+            it.packages.convention(solidity.packages)
         }
         def npmInstall = project.tasks.named(NpmInstallTask.NAME) {
             it.dependsOn(extractSolidityImports)
