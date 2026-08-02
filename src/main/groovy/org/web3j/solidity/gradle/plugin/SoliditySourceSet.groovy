@@ -40,4 +40,6 @@ interface SoliditySourceSet extends SourceDirectorySet {
 
     Property<Boolean> getIgnoreMissing()
 
+    Property<Boolean> getViaIr()
+
 }

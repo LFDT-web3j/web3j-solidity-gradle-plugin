@@ -36,6 +36,7 @@ abstract class SolidityExtension {
         optimizeRuns.convention(0)
         prettyJson.convention(false)
         ignoreMissing.convention(false)
+        viaIr.convention(false)
         outputComponents.convention([
                 OutputComponent.BIN,
                 OutputComponent.ABI,
@@ -64,6 +65,8 @@ abstract class SolidityExtension {
     abstract Property<Boolean> getOverwrite()
 
     abstract Property<Boolean> getIgnoreMissing()
+
+    abstract Property<Boolean> getViaIr()
 
     abstract SetProperty<String> getAllowPaths()
 

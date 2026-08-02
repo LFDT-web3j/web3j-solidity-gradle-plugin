@@ -503,6 +503,37 @@ class SolidityPluginTest {
         assertEquals('4.9.0', dependencies['@openzeppelin/contracts'])
     }
 
+
+    @Test
+    void viaIrOptionCompilesSolidity() throws IOException {
+        Files.writeString(buildFile, """
+            plugins {
+               id 'org.web3j.solidity'
+            }
+            solidity {
+                viaIr = true
+                resolvePackages = false
+            }
+            sourceSets {
+                main {
+                    solidity {
+                        exclude "minimal_forwarder/**"
+                        exclude "eip/**"
+                        exclude "greeter/**"
+                        exclude "common/**"
+                        exclude "openzeppelin/**"
+                        exclude "$differentVersionsFolderName/**"
+                    }
+                }
+            }
+        """)
+
+        def result = build()
+
+        assertEquals(SUCCESS, result.task(":compileSolidity").getOutcome())
+    }
+
+
     private BuildResult build() {
         return GradleRunner.create()
                 .withProjectDir(testProjectDir.toFile())

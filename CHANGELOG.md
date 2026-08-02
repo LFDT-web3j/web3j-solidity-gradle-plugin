@@ -14,6 +14,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 ### Features
 
 * Add `packages` property to declare additional npm packages (with optional version pinning) to resolve, without disabling `resolvePackages` or configuring `pathRemappings` manually [#93](https://github.com/LFDT-web3j/web3j-solidity-gradle-plugin/pull/93)
+* Add `viaIr` property to enable the `--via-ir` compilation pipeline [#83](https://github.com/LFDT-web3j/web3j-solidity-gradle-plugin/issues/83)
 
 ### BREAKING CHANGES
 
