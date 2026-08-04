@@ -57,6 +57,9 @@ abstract class SolidityCompile extends SourceTask {
     abstract Property<Boolean> getIgnoreMissing()
 
     @Input
+    abstract Property<Boolean> getViaIr()
+
+    @Input
     abstract SetProperty<String> getAllowPaths()
 
     @Input
@@ -123,6 +126,10 @@ abstract class SolidityCompile extends SourceTask {
 
             if (ignoreMissing.get()) {
                 options.add('--ignore-missing')
+            }
+
+            if (viaIr.get()) {
+                options.add('--via-ir')
             }
 
             if (!allowPaths.get().isEmpty() || !imports.isEmpty()) {

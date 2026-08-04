@@ -47,6 +47,7 @@ abstract class DefaultSoliditySourceSet extends DefaultSourceDirectorySet implem
         optimize.convention(solidity.optimize)
         optimizeRuns.convention(solidity.optimizeRuns)
         ignoreMissing.convention(solidity.ignoreMissing)
+        viaIr.convention(solidity.viaIr)
     }
 
     @Override
