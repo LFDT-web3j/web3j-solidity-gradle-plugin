@@ -144,6 +144,7 @@ class SolidityPlugin implements Plugin<Project> {
             it.optimizeRuns.convention(soliditySourceSet.optimizeRuns)
             it.evmVersion.convention(soliditySourceSet.evmVersion)
             it.ignoreMissing.convention(soliditySourceSet.ignoreMissing)
+            it.viaIr.convention(soliditySourceSet.viaIr)
 
             it.resolvedImports.set(solidity.resolvePackages.flatMap {
                 it ? resolveSolidity.flatMap { it.allImports } : emptyImports(project)
