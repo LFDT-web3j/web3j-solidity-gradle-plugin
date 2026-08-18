@@ -32,6 +32,7 @@ abstract class SolidityExtension {
     SolidityExtension() {
         optimize.convention(true)
         resolvePackages.convention(true)
+        compilerEnabled.convention(true)
         overwrite.convention(true)
         optimizeRuns.convention(0)
         prettyJson.convention(false)
@@ -57,6 +58,14 @@ abstract class SolidityExtension {
     abstract Property<Boolean> getOptimize()
 
     abstract Property<Boolean> getResolvePackages()
+
+    /**
+     * When {@code false}, Solidity compilation is skipped: the {@code compileSolidity} tasks do not
+     * run (so no solc compiler is resolved, downloaded or executed) and package resolution is not
+     * triggered. Useful when the plugin is applied only to set up source sets or to generate
+     * wrappers from existing {@code .abi} files. Defaults to {@code true}.
+     */
+    abstract Property<Boolean> getCompilerEnabled()
 
     abstract Property<Integer> getOptimizeRuns()
 
