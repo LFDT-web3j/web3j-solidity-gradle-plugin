@@ -3,14 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [0.7.1]() (Upcoming)
+# [0.7.1](https://github.com/LFDT-web3j/web3j-solidity-gradle-plugin/releases/tag/v0.7.0) (2026-10-05)
 
 ### Bug Fixes
 
-*
+* Update web3j-sokt version to fix version resolver[#100](https://github.com/LFDT-web3j/web3j-solidity-gradle-plugin/pull/100)
+
 ### Features
 
-* 
+*
+
 ### BREAKING CHANGES
 
 *

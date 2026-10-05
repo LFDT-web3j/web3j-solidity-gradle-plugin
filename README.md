@@ -100,7 +100,7 @@ sourceSets {
 }
 ```
 
-Now with solidity gradle plugin version 0.7.0, you can set different solidity versions, evmVersions, optimize flag, optimizeRuns, ignoreMissing
+Now with solidity gradle plugin version 0.7.1, you can set different solidity versions, evmVersions, optimize flag, optimizeRuns, ignoreMissing
 and viaIr flag values for different sourceSets.
 
 ```groovy
