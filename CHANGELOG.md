@@ -7,7 +7,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
-* Update web3j-sokt version []()
+* Update web3j-sokt version to fix version resolver[#100](https://github.com/LFDT-web3j/web3j-solidity-gradle-plugin/pull/100)
 
 ### Features
 
